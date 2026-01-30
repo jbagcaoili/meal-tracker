@@ -9,56 +9,75 @@ from PIL import Image
 # ---------------- CONFIGURATION ----------------
 st.set_page_config(page_title="Meal Tracker", page_icon="🥗", layout="centered")
 
-# ---------------- CUSTOM STYLING (The "Pretty" Part) ----------------
-# This CSS mimics the mobile app look (Orange/Teal, Cards, Shadows)
+# ---------------- CUSTOM CSS (The "Pretty" Engine) ----------------
+# This forces Streamlit to look like a mobile app
 st.markdown("""
 <style>
-    /* Main Background */
+    /* 1. Main Background - Soft Gradient */
     .stApp {
-        background-color: #F8F9FA;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
-    
-    /* Hide standard header */
+
+    /* 2. Hide default ugly header */
     header {visibility: hidden;}
     
-    /* Custom Card Style */
-    .meal-card {
-        background-color: white;
-        padding: 20px;
-        border-radius: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
-        border-left: 5px solid #FF6B6B; /* Coral accent */
+    /* 3. Card Container for the Form */
+    .block-container {
+        padding-top: 2rem;
+        max-width: 600px;
     }
-    
-    /* Top Header Style */
-    .main-header {
-        background-color: #FF6B6B;
-        padding: 30px;
-        border-radius: 0 0 30px 30px;
-        color: white;
-        text-align: center;
-        margin-bottom: 20px;
-        margin-top: -60px; /* Pull it to the very top */
+
+    /* 4. Input Fields (Rounded & Soft) */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"], .stDateInput input, .stTimeInput input {
+        border-radius: 15px !important;
+        border: 1px solid #ddd;
+        padding: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
     }
-    
-    /* Text Styles */
-    .sub-text { color: #888; font-size: 14px; }
-    .bold-text { font-weight: bold; font-size: 18px; color: #333; }
-    
-    /* Button Override */
+
+    /* 5. The "Save" Button - Gradient & Rounded */
     .stButton>button {
-        background-color: #FF6B6B;
+        background: linear-gradient(45deg, #FF6B6B, #FF8E53);
         color: white;
-        border-radius: 50px;
-        height: 50px;
-        width: 100%;
-        font-weight: bold;
         border: none;
+        border-radius: 25px;
+        height: 55px;
+        width: 100%;
+        font-size: 18px;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        transition: all 0.3s ease;
     }
     .stButton>button:hover {
-        background-color: #FF4B4B;
-        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+    }
+
+    /* 6. Food Feed Cards */
+    .meal-card {
+        background: white;
+        border-radius: 20px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+    }
+    .meal-card:active {
+        transform: scale(0.98);
+    }
+    
+    /* 7. Typography */
+    h1 {
+        color: #333;
+        font-family: 'Helvetica Neue', sans-serif;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+    p {
+        color: #666;
+        text-align: center;
+        margin-bottom: 30px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -66,7 +85,7 @@ st.markdown("""
 # ---------------- FUNCTIONS ----------------
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    img.thumbnail((400, 400)) # Slightly larger thumbnail for the "Feed" look
+    img.thumbnail((400, 400)) 
     buffered = BytesIO()
     img.save(buffered, format="JPEG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
@@ -83,73 +102,76 @@ except:
 
 # ---------------- UI LAYOUT ----------------
 
-# 1. The "App Header" (Orange Box)
-st.markdown(f"""
-<div class="main-header">
-    <h1>🔥 Daily Tracker</h1>
-    <p>Keeping up with JB & Juvy</p>
-</div>
-""", unsafe_allow_html=True)
+st.title("🥑 Daily Eats")
+st.markdown("<p>Tracking for JB & Juvy</p>", unsafe_allow_html=True)
 
-# 2. Main Action Area (Tabs for "Feed" and "Add")
-tab1, tab2 = st.tabs(["🍛 Food Feed", "📸 Log Meal"])
+# Navigation Tabs (Styled to look simpler)
+tab_feed, tab_log = st.tabs(["Feed", "Add New"])
 
-# --- TAB 1: THE FEED (Looks like the "Food Diary" in your screenshot) ---
-with tab1:
+# --- TAB 1: THE FEED ---
+with tab_feed:
     if not data.empty:
-        # Sort by date (newest first)
+        # Reverse order to show newest first
         try:
-            # Quick fix to ensure sorting works if date formats vary
-            data = data.iloc[::-1] 
+            data = data.iloc[::-1]
         except:
             pass
             
         for index, row in data.iterrows():
-            # We use HTML injection to make it look exactly like a mobile card
             st.markdown(f"""
             <div class="meal-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div class="bold-text">{row['Name']}</div>
-                    <div class="sub-text">{row['Date time']}</div>
+                    <div style="font-weight: bold; font-size: 18px; color: #444;">{row['Name']}</div>
+                    <div style="font-size: 12px; color: #aaa; background: #f0f2f6; padding: 5px 10px; border-radius: 10px;">{row['Date time']}</div>
                 </div>
-                <img src="{row['Image']}" style="width: 100%; border-radius: 15px;">
+                <img src="{row['Image']}" style="width: 100%; border-radius: 15px; object-fit: cover; max-height: 300px;">
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.info("No meals yet! Click 'Log Meal' to start.")
+        st.info("No meals yet. Go to 'Add New' to start!")
 
-# --- TAB 2: LOGGING (Clean Input Form) ---
-with tab2:
-    st.markdown("### New Entry")
-    with st.form(key="log_form", clear_on_submit=True):
-        name = st.selectbox("Who is eating?", ["JB", "Juvy"]) 
-        
-        # Simple Date/Time layout
-        c1, c2 = st.columns(2)
-        with c1:
-            d_date = st.date_input("Date", datetime.now())
-        with c2:
-            d_time = st.time_input("Time", datetime.now())
-        
-        uploaded_file = st.file_uploader("Upload Photo", type=['jpg', 'png', 'jpeg'])
-        camera_file = st.camera_input("Or Take Photo")
-        
-        # Logic to pick whichever file was used
-        final_file = uploaded_file if uploaded_file else camera_file
-        
-        submit = st.form_submit_button("✅ Save to Diary")
+# --- TAB 2: LOGGING ---
+with tab_log:
+    with st.container():
+        # We use a container to group inputs visually
+        with st.form(key="log_form", clear_on_submit=True):
+            
+            # 1. Who?
+            name = st.selectbox("Who is eating?", ["JB", "Juvy"]) 
+            
+            # 2. When? (Side by Side)
+            c1, c2 = st.columns(2)
+            with c1:
+                # Standard date picker
+                d_date = st.date_input("Date", datetime.now())
+            with c2:
+                # step=60 allows minute selection. 
+                # On mobile, this triggers the scroll wheel.
+                d_time = st.time_input("Time", datetime.now(), step=60)
+            
+            # 3. Photo
+            uploaded_file = st.file_uploader("Upload", type=['jpg', 'png', 'jpeg'], label_visibility="collapsed")
+            camera_file = st.camera_input("Take Photo", label_visibility="collapsed")
+            
+            final_file = uploaded_file if uploaded_file else camera_file
+            
+            # Spacer
+            st.write("")
+            
+            # 4. Big Beautiful Button
+            submit = st.form_submit_button("✨ Save Meal")
 
-    if submit and final_file:
-        image_data = image_to_base64(final_file)
-        # Format Date nicely (e.g., "Jan 31, 12:30 PM")
-        dt_obj = datetime.combine(d_date, d_time)
-        dt_string = dt_obj.strftime("%b %d, %I:%M %p")
+        if submit and final_file:
+            image_data = image_to_base64(final_file)
+            dt_obj = datetime.combine(d_date, d_time)
+            # Format: Jan 30 • 10:45 PM
+            dt_string = dt_obj.strftime("%b %d • %I:%M %p")
 
-        new_entry = pd.DataFrame(
-            [{"Name": name, "Date time": dt_string, "Image": image_data}]
-        )
+            new_entry = pd.DataFrame(
+                [{"Name": name, "Date time": dt_string, "Image": image_data}]
+            )
 
-        updated_df = pd.concat([data, new_entry], ignore_index=True)
-        conn.update(worksheet="Sheet1", data=updated_df)
-        st.success("Added!")
-        st.rerun()
+            updated_df = pd.concat([data, new_entry], ignore_index=True)
+            conn.update(worksheet="Sheet1", data=updated_df)
+            st.success("Saved!")
+            st.rerun()
