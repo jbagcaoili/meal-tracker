@@ -9,118 +9,57 @@ from PIL import Image
 # ---------------- CONFIGURATION ----------------
 st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="centered")
 
-# ---------------- SESSION STATE (The Brains) ----------------
+# ---------------- SESSION STATE & THEME ----------------
 if 'theme' not in st.session_state:
-    st.session_state.theme = 'dark'
+    st.session_state.theme = 'light'
 
 def toggle_theme():
-    if st.session_state.theme == 'dark':
-        st.session_state.theme = 'light'
-    else:
-        st.session_state.theme = 'dark'
+    st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
 
-# ---------------- DYNAMIC CSS ENGINE ----------------
-# We define color palettes for both modes here
-themes = {
-    "light": {
-        "bg": "#F1F5F9",
-        "card_bg": "#FFFFFF",
-        "text": "#1E293B",
-        "sub_text": "#64748B",
-        "input_bg": "#F8FAFC",
-        "border": "#E2E8F0",
-        "shadow": "rgba(148, 163, 184, 0.15)",
-        "accent": "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" # Indigo/Purple
-    },
-    "dark": {
-        "bg": "#0F172A",
-        "card_bg": "#1E293B",
-        "text": "#F8FAFC",
-        "sub_text": "#94A3B8",
-        "input_bg": "#334155",
-        "border": "#475569",
-        "shadow": "rgba(0, 0, 0, 0.3)",
-        "accent": "linear-gradient(135deg, #38BDF8 0%, #818CF8 100%)" # Sky/Indigo
-    }
+# ---------------- MINIMALIST CSS ----------------
+# We only style the BACKGROUND and BUTTONS. We leave inputs alone to prevent glitches.
+theme_config = {
+    "light": {"bg": "#ffffff", "text": "#333333", "accent": "#FF4B4B"},
+    "dark": {"bg": "#0e1117", "text": "#ffffff", "accent": "#FF4B4B"}
 }
+current = theme_config[st.session_state.theme]
 
-current_theme = themes[st.session_state.theme]
-
-# Inject CSS based on current selection
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-    
-    /* Global Reset */
+    /* 1. App Background */
     .stApp {{
-        background-color: {current_theme['bg']};
-        color: {current_theme['text']};
-        font-family: 'Inter', sans-serif;
+        background-color: {current['bg']};
+        color: {current['text']};
     }}
     
-    /* Hide Default Header/Footer */
+    /* 2. Hide Header/Footer */
     header {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    .block-container {{ padding-top: 3rem; max-width: 550px; }}
-
-    /* MODERN CARD STYLING */
-    .stContainer {{
-        background-color: {current_theme['card_bg']};
-        border-radius: 24px;
-        padding: 24px;
-        border: 1px solid {current_theme['border']};
-        box-shadow: 0 10px 25px -5px {current_theme['shadow']};
-    }}
-
-    /* INPUT FIELDS (The "Sleek" Look) */
-    .stTextInput input, .stSelectbox div, .stNumberInput input, .stDateInput input, .stTimeInput input {{
-        background-color: {current_theme['input_bg']} !important;
-        color: {current_theme['text']} !important;
-        border: 1px solid {current_theme['border']} !important;
-        border-radius: 12px !important;
-        height: 48px;
-        font-size: 15px;
-    }}
     
-    /* Focus State for Inputs */
-    .stTextInput input:focus, .stNumberInput input:focus {{
-        border-color: #6366F1 !important;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    /* 3. Center the layout content */
+    .block-container {{
+        max-width: 550px;
+        padding-top: 2rem;
     }}
 
-    /* PRIMARY BUTTON */
-    .stButton>button {{
-        background: {current_theme['accent']};
+    /* 4. Styled "Primary" Buttons (Gradient) */
+    div.stButton > button:first-child {{
+        background: linear-gradient(to right, #ff4b4b, #ff6b6b);
         color: white;
         border: none;
-        border-radius: 16px;
-        height: 56px;
-        font-weight: 700;
-        font-size: 16px;
-        letter-spacing: 0.5px;
-        box-shadow: 0 4px 12px {current_theme['shadow']};
-        transition: all 0.2s ease;
+        border-radius: 12px;
+        height: 50px;
+        font-weight: bold;
+        width: 100%;
     }}
-    .stButton>button:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px {current_theme['shadow']};
+    div.stButton > button:hover {{
+        opacity: 0.9;
     }}
-
-    /* TYPOGRAPHY */
-    h1, h2, h3 {{ font-weight: 800; letter-spacing: -0.5px; color: {current_theme['text']}; }}
-    p, label {{ color: {current_theme['sub_text']}; font-size: 14px; font-weight: 500; }}
     
-    /* TABS */
-    button[data-baseweb="tab"] {{
-        background-color: transparent !important;
-        color: {current_theme['sub_text']};
-        font-weight: 600;
-    }}
-    button[data-baseweb="tab"][aria-selected="true"] {{
-        color: {current_theme['text']};
-        background-color: {current_theme['card_bg']} !important;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px {current_theme['shadow']};
+    /* 5. Metrics styling */
+    div[data-testid="stMetricValue"] {{
+        font-size: 26px;
+        color: {current['accent']};
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -128,9 +67,9 @@ st.markdown(f"""
 # ---------------- HELPERS ----------------
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    img.thumbnail((500, 500))
+    img.thumbnail((600, 600)) 
     buf = BytesIO()
-    img.save(buf, format="JPEG", quality=85) # Better quality
+    img.save(buf, format="JPEG", quality=80)
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 # ---------------- DATABASE ----------------
@@ -139,102 +78,100 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 try:
     df = conn.read(worksheet="Sheet1", ttl=0)
     df = df.dropna(how="all")
-    # Auto-fix missing columns to prevent crashes
-    required_cols = ["Name", "Date time", "Image", "Calories", "Likes"]
-    for col in required_cols:
+    # Auto-fix missing columns
+    for col in ["Name", "Date time", "Image", "Calories", "Likes"]:
         if col not in df.columns:
             df[col] = 0 if col in ["Calories", "Likes"] else ""
 except:
     df = pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
 
-# ---------------- UI HEADER ----------------
-# Theme Toggle Button (Top Right)
-c1, c2 = st.columns([4, 1])
+# ---------------- HEADER ----------------
+c1, c2 = st.columns([5, 1])
 with c1:
-    st.title("Daily Eats")
+    st.title("🥑 Daily Eats")
     st.caption("Tracking for JB & Juvy")
 with c2:
-    # The Toggle Switch
-    btn_icon = "🌞" if st.session_state.theme == 'dark' else "🌙"
-    st.button(btn_icon, on_click=toggle_theme, help="Toggle Theme")
+    # Clean Toggle Button
+    icon = "🌙" if st.session_state.theme == 'light' else "☀️"
+    if st.button(icon):
+        toggle_theme()
+        st.rerun()
 
-# ---------------- MAIN TABS ----------------
-tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "📝 Log", "📊 Stats"])
+# ---------------- TABS ----------------
+tab_feed, tab_log, tab_stats = st.tabs(["feed", "log", "stats"])
 
-# --- TAB 1: FEED ---
+# --- TAB 1: INSTAGRAM STYLE FEED ---
 with tab_feed:
     if not df.empty:
+        # Show newest first
         df_display = df.iloc[::-1].reset_index(drop=True)
         
         for i, row in df_display.iterrows():
-            with st.container():
-                # Avatar & Info
-                c_av, c_info = st.columns([1, 5])
-                with c_av:
-                    st.markdown(f"<div style='font-size:32px; text-align:center;'>{'🧑‍💻' if row['Name']=='JB' else '👩‍🔬'}</div>", unsafe_allow_html=True)
-                with c_info:
-                    st.markdown(f"**{row['Name']}**")
-                    st.caption(f"{row['Date time']}")
+            # USE NATIVE CONTAINER (Clean Border, No CSS Hacks)
+            with st.container(border=True):
+                # Header
+                c_head1, c_head2 = st.columns([1, 5])
+                with c_head1:
+                    st.write("🧑‍🍳" if row['Name'] == "JB" else "👩‍🍳")
+                with c_head2:
+                    st.write(f"**{row['Name']}**")
                 
-                # Image
-                st.image(row['Image'], use_container_width=True)
+                # Image (Hero)
+                if row['Image'].startswith("data:"):
+                    st.image(row['Image'], use_container_width=True)
                 
-                # Action Bar
-                c_cal, c_like, c_del = st.columns([2, 1, 1])
-                with c_cal:
-                     st.markdown(f"**{row['Calories']}** <span style='color:{current_theme['sub_text']};'>kcal</span>", unsafe_allow_html=True)
+                # Footer Info
+                st.caption(f"{row['Date time']} • {row['Calories']} kcal")
+                
+                # Actions (Likes & Delete)
+                c_like, c_del, c_space = st.columns([1, 1, 3])
+                
                 with c_like:
-                    # Logic to find the real index in the database
+                    # Find real index
                     real_idx = df[df['Date time'] == row['Date time']].index[0]
-                    if st.button(f"❤️ {int(row.get('Likes',0))}", key=f"like_{real_idx}"):
-                        df.at[real_idx, "Likes"] = int(row.get("Likes",0)) + 1
+                    likes = int(row.get("Likes", 0))
+                    if st.button(f"❤️ {likes}", key=f"like_{real_idx}"):
+                        df.at[real_idx, "Likes"] = likes + 1
                         conn.update(worksheet="Sheet1", data=df)
                         st.rerun()
+                
                 with c_del:
                     if st.button("🗑️", key=f"del_{real_idx}"):
                         df = df.drop(real_idx)
                         conn.update(worksheet="Sheet1", data=df)
                         st.rerun()
-                
-                st.write("") # Spacer
     else:
-        st.info("Your feed is empty. Start logging!")
+        st.info("No meals yet.")
 
-# --- TAB 2: LOGGING (Redesigned) ---
+# --- TAB 2: CLEAN LOGGING FORM ---
 with tab_log:
-    st.markdown("### New Entry")
-    
-    # We use a container to create the "Card" effect
-    with st.container():
+    st.write("") # Spacer
+    with st.container(border=True):
+        st.subheader("New Entry")
         with st.form("entry_form", clear_on_submit=True):
             
-            # Row 1: Who & Calories
-            c_name, c_cal = st.columns(2)
-            with c_name:
-                name = st.selectbox("Who is eating?", ["JB", "Juvy"])
-            with c_cal:
-                calories = st.number_input("Calories", min_value=0, step=50, value=400)
+            # Use Standard Streamlit columns for layout
+            col1, col2 = st.columns(2)
+            with col1:
+                name = st.selectbox("Who?", ["JB", "Juvy"])
+            with col2:
+                calories = st.number_input("Kcal", min_value=0, step=50, value=400)
             
-            # Row 2: Date & Time
-            c_date, c_time = st.columns(2)
-            with c_date:
+            col3, col4 = st.columns(2)
+            with col3:
                 d_date = st.date_input("Date")
-            with c_time:
+            with col4:
                 d_time = st.time_input("Time")
             
-            # Row 3: Image
-            st.markdown("---")
-            st.markdown("**📸 Snap a photo**")
+            st.divider()
             
-            # Custom styled file uploader hint
-            uploaded_file = st.file_uploader("Upload", type=['jpg', 'png'], label_visibility="collapsed")
-            camera_file = st.camera_input("Camera", label_visibility="collapsed")
+            # File Uploader
+            upload = st.file_uploader("Upload Photo", type=['jpg', 'png'])
+            cam = st.camera_input("Or Take Photo")
+            final_file = upload if upload else cam
             
-            final_file = uploaded_file if uploaded_file else camera_file
-            
-            st.write("") # Spacer
-            submitted = st.form_submit_button("Save to Diary")
-
+            submitted = st.form_submit_button("Save Meal")
+    
     if submitted and final_file:
         img_data = image_to_base64(final_file)
         timestamp = datetime.combine(d_date, d_time).strftime("%b %d, %I:%M %p")
@@ -249,27 +186,23 @@ with tab_log:
         
         updated_df = pd.concat([df, new_row], ignore_index=True)
         conn.update(worksheet="Sheet1", data=updated_df)
-        st.success("Added successfully!")
+        st.success("Saved!")
         st.rerun()
 
-# --- TAB 3: STATISTICS ---
+# --- TAB 3: STATS DASHBOARD ---
 with tab_stats:
-    st.markdown("### Dashboard")
-    with st.container():
-        if not df.empty:
-             df["Calories"] = pd.to_numeric(df["Calories"], errors='coerce').fillna(0)
-             
-             total = df["Calories"].sum()
-             jb_cals = df[df["Name"]=="JB"]["Calories"].sum()
-             juvy_cals = df[df["Name"]=="Juvy"]["Calories"].sum()
-             
-             c1, c2, c3 = st.columns(3)
-             c1.metric("Total Tracked", f"{int(total)}")
-             c2.metric("JB's Cals", f"{int(jb_cals)}")
-             c3.metric("Juvy's Cals", f"{int(juvy_cals)}")
-             
-             st.markdown("---")
-             st.caption("Weekly Breakdown")
-             st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#6366F1")
-        else:
-            st.info("No data available yet.")
+    st.write("")
+    if not df.empty:
+        df["Calories"] = pd.to_numeric(df["Calories"], errors='coerce').fillna(0)
+        
+        # Summary Metrics
+        with st.container(border=True):
+            c1, c2 = st.columns(2)
+            c1.metric("Total Calories", int(df["Calories"].sum()))
+            c2.metric("Meals Tracked", len(df))
+        
+        # Chart
+        st.subheader("Weekly Breakdown")
+        st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#FF4B4B")
+    else:
+        st.info("Log some meals to see stats!")
