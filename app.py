@@ -6,242 +6,240 @@ import base64
 from io import BytesIO
 from PIL import Image
 
-# ---------------- CONFIG ----------------
+# ---------------- CONFIGURATION ----------------
 st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="centered")
 
-# ---------------- CSS ----------------
+# ---------------- PRO CSS STYLING ----------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    /* 1. Global Reset & Dark Mode Base */
+    .stApp {
+        background-color: #0F172A; /* Midnight Blue */
+        color: #F8FAFC;
+    }
+    
+    /* 2. Remove default Header/Footer clutter */
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 5rem;
+        max-width: 500px; /* Mobile width simulator */
+    }
 
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
-}
+    /* 3. Custom Card Container */
+    .stContainer {
+        background-color: #1E293B;
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px solid #334155;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
 
-header, footer {
-    visibility: hidden;
-}
+    /* 4. Styled Metrics (Stats) */
+    div[data-testid="stMetricValue"] {
+        font-size: 24px;
+        color: #38BDF8; /* Sky Blue */
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 14px;
+        color: #94A3B8;
+    }
 
-.stApp {
-    background: radial-gradient(circle at top, #0f172a 0%, #020617 60%);
-    color: #e5e7eb;
-}
+    /* 5. Inputs & Buttons */
+    .stTextInput input, .stSelectbox div, .stNumberInput input {
+        border-radius: 12px;
+        background-color: #1E293B !important;
+        color: white !important;
+        border: 1px solid #475569 !important;
+    }
+    
+    /* Primary Action Button (Gradient) */
+    .stButton>button {
+        background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        font-weight: bold;
+        height: 50px;
+        transition: transform 0.1s;
+    }
+    .stButton>button:active {
+        transform: scale(0.98);
+    }
+    
+    /* Secondary Action Button (Delete/Like) - Make them subtle */
+    div[data-testid="column"] .stButton>button {
+        background: transparent;
+        border: 1px solid #475569;
+        height: 40px;
+        font-size: 14px;
+    }
+    div[data-testid="column"] .stButton>button:hover {
+        border-color: #94A3B8;
+        background: #334155;
+    }
 
-.block-container {
-    max-width: 420px;
-    padding-top: 1.2rem;
-}
-
-/* TITLE */
-h1 {
-    text-align: center;
-    font-weight: 800;
-    color: #f9fafb;
-}
-.subtitle {
-    text-align: center;
-    color: #9ca3af;
-    margin-bottom: 1.5rem;
-}
-
-/* TABS */
-button[data-baseweb="tab"] {
-    font-size: 15px;
-    font-weight: 600;
-    color: #94a3b8;
-}
-button[data-baseweb="tab"][aria-selected="true"] {
-    color: #38bdf8;
-    border-bottom: 3px solid #38bdf8;
-}
-
-/* CARDS */
-.meal-card {
-    background: rgba(30, 41, 59, 0.65);
-    backdrop-filter: blur(14px);
-    border-radius: 22px;
-    padding: 14px;
-    margin-bottom: 20px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {opacity:0; transform:translateY(6px);}
-    to {opacity:1;}
-}
-
-.meal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.meal-name {
-    font-weight: 700;
-    font-size: 16px;
-    color: #f9fafb;
-}
-
-.meal-time {
-    font-size: 11px;
-    background: linear-gradient(135deg, #38bdf8, #6366f1);
-    padding: 4px 10px;
-    border-radius: 999px;
-    color: white;
-}
-
-.meal-card img {
-    width: 100%;
-    border-radius: 16px;
-    margin-top: 10px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.7);
-}
-
-/* INPUTS */
-.stSelectbox div[data-baseweb="select"],
-.stDateInput input,
-.stTimeInput input,
-.stNumberInput input,
-.stFileUploader {
-    background: rgba(15, 23, 42, 0.8) !important;
-    border-radius: 14px !important;
-    border: 1px solid rgba(148,163,184,0.15) !important;
-    color: #f9fafb !important;
-}
-
-/* BUTTON */
-.stButton>button {
-    background: linear-gradient(135deg, #38bdf8, #6366f1);
-    color: white;
-    border-radius: 999px;
-    height: 54px;
-    width: 100%;
-    font-size: 17px;
-    font-weight: 700;
-    border: none;
-    box-shadow: 0 6px 30px rgba(56,189,248,0.5);
-    transition: all 0.25s ease;
-}
-
-.stButton>button:hover {
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 10px 45px rgba(56,189,248,0.7);
-}
-
-/* CAMERA */
-section[data-testid="stCameraInput"] {
-    border-radius: 18px;
-    overflow: hidden;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.7);
-}
-
-/* ALERT */
-div[data-testid="stAlert"] {
-    border-radius: 14px;
-}
+    /* 6. Typography */
+    h1 { font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: -1px; }
+    p, label { font-family: 'Inter', sans-serif; color: #CBD5E1; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- FUNCTIONS ----------------
+# ---------------- HELPERS ----------------
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    img.thumbnail((400, 400))
+    img.thumbnail((500, 500)) # High quality thumbnail
     buf = BytesIO()
-    img.save(buf, format="JPEG")
+    img.save(buf, format="JPEG", quality=80)
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
-# ---------------- DATABASE ----------------
+# ---------------- DATA ----------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# Initialize Data
 try:
-    data = conn.read(worksheet="Sheet1", ttl=5)
-    data = data.dropna(how="all")
+    df = conn.read(worksheet="Sheet1", ttl=0) # ttl=0 ensures instant updates
+    df = df.dropna(how="all")
+    # Ensure columns exist (backwards compatibility)
+    for col in ["Likes", "Calories"]:
+        if col not in df.columns:
+            df[col] = 0
 except:
-    data = pd.DataFrame(columns=["Name", "Date time", "Calories", "Image", "Likes"])
+    df = pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
 
-# ---------------- HEADER ----------------
-st.title("🥑 Daily Eats")
-st.markdown('<div class="subtitle">Tracking for JB & Juvy</div>', unsafe_allow_html=True)
+# ---------------- UI: HEADER ----------------
+c1, c2 = st.columns([1, 4])
+with c1:
+    st.image("https://cdn-icons-png.flaticon.com/512/3480/3480823.png", width=60)
+with c2:
+    st.title("Daily Eats")
+    st.caption("Tracking for JB & Juvy")
 
-tab_feed, tab_add, tab_stats = st.tabs(["Feed", "Add", "Stats"])
+# ---------------- UI: TABS ----------------
+tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "➕ Log Meal", "📊 Stats"])
 
-# ---------------- FEED ----------------
+# --- TAB 1: THE FEED ---
 with tab_feed:
-    if not data.empty:
-        data = data.iloc[::-1]
-        for i, row in data.iterrows():
-            col_card, col_del = st.columns([6,1])
+    if not df.empty:
+        # Show newest first
+        df_display = df.iloc[::-1].reset_index(drop=True)
+        
+        for i, row in df_display.iterrows():
+            # CARD CONTAINER
+            with st.container():
+                # 1. Header Row (Avatar + Name + Time)
+                c_head1, c_head2 = st.columns([1, 5])
+                with c_head1:
+                    # Simple avatar based on name
+                    avatar = "👨‍💻" if row['Name'] == "JB" else "👩‍🔬"
+                    st.markdown(f"<div style='font-size:30px;'>{avatar}</div>", unsafe_allow_html=True)
+                with c_head2:
+                    st.markdown(f"**{row['Name']}**")
+                    st.caption(f"{row['Date time']}")
+                
+                # 2. Hero Image
+                st.image(row['Image'], use_container_width=True)
+                
+                # 3. Action Bar (Calories | Likes | Delete)
+                c_act1, c_act2, c_act3 = st.columns([2, 1, 1])
+                
+                with c_act1:
+                    st.markdown(f"🔥 **{row['Calories']}** <span style='color:#94A3B8; font-size:12px'>kcal</span>", unsafe_allow_html=True)
+                
+                with c_act2:
+                    # Find original index to update the correct row in DB
+                    original_idx = df[df['Date time'] == row['Date time']].index[0]
+                    current_likes = int(row.get("Likes", 0))
+                    
+                    if st.button(f"❤️ {current_likes}", key=f"like_{original_idx}"):
+                        df.at[original_idx, "Likes"] = current_likes + 1
+                        conn.update(worksheet="Sheet1", data=df)
+                        st.rerun()
 
-            with col_card:
-                st.markdown(f"""
-                <div class="meal-card">
-                    <div class="meal-header">
-                        <div class="meal-name">🍽 {row['Name']}</div>
-                        <div class="meal-time">{row['Date time']}</div>
-                    </div>
-                    <div style="color:#9ca3af;font-size:13px;margin-top:4px;">🔥 {row['Calories']} kcal</div>
-                    <img src="{row['Image']}">
-                    <div style="margin-top:8px;color:#f87171;">❤️ {int(row.get("Likes",0))}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col_del:
-                if st.button("🗑", key=f"del{i}"):
-                    data = data.drop(i)
-                    conn.update(worksheet="Sheet1", data=data)
-                    st.rerun()
-
-            if st.button("❤️ Like", key=f"like{i}"):
-                data.loc[i,"Likes"] = int(row.get("Likes",0)) + 1
-                conn.update(worksheet="Sheet1", data=data)
-                st.rerun()
+                with c_act3:
+                    if st.button("🗑️", key=f"del_{original_idx}"):
+                        df = df.drop(original_idx)
+                        conn.update(worksheet="Sheet1", data=df)
+                        st.rerun()
+                
+                st.markdown("---") # Divider between cards
     else:
-        st.info("No meals yet. Add your first one!")
+        st.info("No meals logged yet. Go to the 'Log Meal' tab!")
 
-# ---------------- ADD ----------------
-with tab_add:
-    with st.form("add_form", clear_on_submit=True):
-        name = st.selectbox("Who?", ["JB","Juvy"])
+# --- TAB 2: LOG MEAL ---
+with tab_log:
+    st.markdown("### 📸 Snap a Meal")
+    with st.form("entry_form", clear_on_submit=True):
+        
+        col_who, col_cal = st.columns(2)
+        with col_who:
+            name = st.selectbox("Who is eating?", ["JB", "Juvy"])
+        with col_cal:
+            calories = st.number_input("Calories", min_value=0, step=10, value=300)
 
-        c1, c2 = st.columns(2)
-        with c1:
-            d = st.date_input("Date", datetime.now())
-        with c2:
-            t = st.time_input("Time", datetime.now())
+        # Smart Date/Time
+        col_d, col_t = st.columns(2)
+        with col_d:
+            d_date = st.date_input("Date")
+        with col_t:
+            d_time = st.time_input("Time")
 
-        calories = st.number_input("Calories", min_value=0)
+        # Photo Input
+        uploaded_file = st.file_uploader("Upload Image", type=['jpg', 'png'])
+        camera_file = st.camera_input("Take Photo")
+        final_file = uploaded_file if uploaded_file else camera_file
 
-        upload = st.file_uploader("Upload", type=["jpg","png","jpeg"])
-        cam = st.camera_input("Camera")
-        photo = upload if upload else cam
-
-        submit = st.form_submit_button("✨ Save Meal")
-
-    if submit and photo:
-        img = image_to_base64(photo)
-        dt = datetime.combine(d,t).strftime("%b %d • %I:%M %p")
-
-        new = pd.DataFrame([{
+        submitted = st.form_submit_button("✨ Save to Feed")
+    
+    if submitted and final_file:
+        # Processing
+        img_data = image_to_base64(final_file)
+        timestamp = datetime.combine(d_date, d_time).strftime("%b %d, %I:%M %p")
+        
+        new_row = pd.DataFrame([{
             "Name": name,
-            "Date time": dt,
+            "Date time": timestamp,
             "Calories": calories,
-            "Image": img,
+            "Image": img_data,
             "Likes": 0
         }])
-
-        data = pd.concat([data,new],ignore_index=True)
-        conn.update(worksheet="Sheet1", data=data)
-        st.success("Saved!")
+        
+        # Save
+        updated_df = pd.concat([df, new_row], ignore_index=True)
+        conn.update(worksheet="Sheet1", data=updated_df)
+        st.success("Meal logged!")
         st.rerun()
 
-# ---------------- STATS ----------------
+# --- TAB 3: STATISTICS ---
 with tab_stats:
-    if not data.empty:
-        data["Calories"] = pd.to_numeric(data["Calories"], errors="coerce")
-        weekly = data.groupby("Name")["Calories"].sum()
+    st.markdown("### 📊 Dashboard")
+    
+    if not df.empty:
+        # Convert calories to numeric just in case
+        df["Calories"] = pd.to_numeric(df["Calories"], errors='coerce').fillna(0)
+        
+        # 1. Summary Cards
+        col_stat1, col_stat2 = st.columns(2)
+        
+        total_cals = df["Calories"].sum()
+        top_eater = df.groupby("Name")["Calories"].sum().idxmax()
+        
+        with col_stat1:
+            st.metric("Total Tracked", f"{int(total_cals)} kcal")
+        with col_stat2:
+            st.metric("Top Eater", f"{top_eater}")
 
-        st.subheader("🔥 Weekly Calories")
-        st.bar_chart(weekly)
+        # 2. Charts
+        st.markdown("#### Weekly Breakdown")
+        chart_data = df.groupby("Name")["Calories"].sum()
+        st.bar_chart(chart_data, color="#38BDF8")
+        
+        st.markdown("#### Recent Activity")
+        st.dataframe(
+            df[["Name", "Date time", "Calories", "Likes"]].tail(5),
+            use_container_width=True,
+            hide_index=True
+        )
     else:
-        st.info("No data yet.")
+        st.info("Log some meals to see stats!")
