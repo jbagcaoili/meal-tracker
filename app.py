@@ -6,172 +6,166 @@ import base64
 from io import BytesIO
 from PIL import Image
 
-# ---------------- CONFIGURATION ----------------
-st.set_page_config(page_title="Meal Tracker", page_icon="🥗", layout="centered")
+# ---------------- CONFIG ----------------
+st.set_page_config(page_title="Daily Eats", page_icon="🥗", layout="centered")
 
-# ---------------- CUSTOM CSS (The "Pretty" Engine) ----------------
-# This forces Streamlit to look like a mobile app
-st.markdown("""
+# ---------------- STATE ----------------
+if "dark" not in st.session_state:
+    st.session_state.dark = False
+
+# ---------------- CSS ----------------
+theme_bg = "#0f172a" if st.session_state.dark else "#f8fafc"
+card_bg = "#1e293b" if st.session_state.dark else "#ffffff"
+text_color = "#f1f5f9" if st.session_state.dark else "#1e293b"
+
+st.markdown(f"""
 <style>
-    /* 1. Main Background - Soft Gradient */
-    .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+html, body, [class*="css"] {{
+    font-family: 'Poppins', sans-serif;
+    color: {text_color};
+}}
+.stApp {{
+    background: {theme_bg};
+}}
+header, footer {{visibility: hidden;}}
 
-    /* 2. Hide default ugly header */
-    header {visibility: hidden;}
-    
-    /* 3. Card Container for the Form */
-    .block-container {
-        padding-top: 2rem;
-        max-width: 600px;
-    }
+.block-container {{
+    max-width: 480px;
+}}
 
-    /* 4. Input Fields (Rounded & Soft) */
-    .stTextInput input, .stSelectbox div[data-baseweb="select"], .stDateInput input, .stTimeInput input {
-        border-radius: 15px !important;
-        border: 1px solid #ddd;
-        padding: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-    }
+.meal-card {{
+    background: {card_bg};
+    border-radius: 20px;
+    padding: 14px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    animation: fadeIn 0.4s ease-in;
+}}
 
-    /* 5. The "Save" Button - Gradient & Rounded */
-    .stButton>button {
-        background: linear-gradient(45deg, #FF6B6B, #FF8E53);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        height: 55px;
-        width: 100%;
-        font-size: 18px;
-        font-weight: bold;
-        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
-    }
+@keyframes fadeIn {{
+    from {{opacity:0; transform:translateY(5px);}}
+    to {{opacity:1;}}
+}}
 
-    /* 6. Food Feed Cards */
-    .meal-card {
-        background: white;
-        border-radius: 20px;
-        padding: 15px;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        transition: transform 0.2s;
-    }
-    .meal-card:active {
-        transform: scale(0.98);
-    }
-    
-    /* 7. Typography */
-    h1 {
-        color: #333;
-        font-family: 'Helvetica Neue', sans-serif;
-        font-weight: 700;
-        text-align: center;
-        margin-bottom: 5px;
-    }
-    p {
-        color: #666;
-        text-align: center;
-        margin-bottom: 30px;
-    }
+.meal-header {{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}}
+
+.meal-time {{
+    font-size:12px;
+    background:#fb7185;
+    color:white;
+    padding:4px 10px;
+    border-radius:10px;
+}}
+
+.stButton>button {{
+    border-radius:25px;
+    height:52px;
+    font-weight:600;
+}}
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------- FUNCTIONS ----------------
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    img.thumbnail((400, 400)) 
-    buffered = BytesIO()
-    img.save(buffered, format="JPEG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    return f"data:image/jpeg;base64,{img_str}"
+    img.thumbnail((400, 400))
+    buf = BytesIO()
+    img.save(buf, format="JPEG")
+    return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
-# ---------------- DATABASE ----------------
+# ---------------- DB ----------------
 conn = st.connection("gsheets", type=GSheetsConnection)
-
 try:
-    data = conn.read(worksheet="Sheet1", usecols=list(range(3)), ttl=5)
+    data = conn.read(worksheet="Sheet1", ttl=5)
     data = data.dropna(how="all")
 except:
-    data = pd.DataFrame(columns=["Name", "Date time", "Image"])
+    data = pd.DataFrame(columns=["Name", "Date time", "Calories", "Image", "Likes"])
 
-# ---------------- UI LAYOUT ----------------
-
+# ---------------- HEADER ----------------
 st.title("🥑 Daily Eats")
-st.markdown("<p>Tracking for JB & Juvy</p>", unsafe_allow_html=True)
+st.caption("Tracking for JB & Juvy")
 
-# Navigation Tabs (Styled to look simpler)
-tab_feed, tab_log = st.tabs(["Feed", "Add New"])
+col1, col2 = st.columns([3,1])
+with col2:
+    if st.button("🌙" if not st.session_state.dark else "☀️"):
+        st.session_state.dark = not st.session_state.dark
+        st.rerun()
 
-# --- TAB 1: THE FEED ---
+tab_feed, tab_add, tab_stats = st.tabs(["Feed", "Add", "Stats"])
+
+# ---------------- FEED ----------------
 with tab_feed:
     if not data.empty:
-        # Reverse order to show newest first
-        try:
-            data = data.iloc[::-1]
-        except:
-            pass
-            
-        for index, row in data.iterrows():
-            st.markdown(f"""
-            <div class="meal-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div style="font-weight: bold; font-size: 18px; color: #444;">{row['Name']}</div>
-                    <div style="font-size: 12px; color: #aaa; background: #f0f2f6; padding: 5px 10px; border-radius: 10px;">{row['Date time']}</div>
+        data = data.iloc[::-1]
+        for i, row in data.iterrows():
+            like_col, del_col = st.columns([5,1])
+            with like_col:
+                st.markdown(f"""
+                <div class="meal-card">
+                    <div class="meal-header">
+                        <b>🍽 {row['Name']}</b>
+                        <div class="meal-time">{row['Date time']}</div>
+                    </div>
+                    <p>🔥 {row['Calories']} kcal</p>
+                    <img src="{row['Image']}" style="width:100%;border-radius:15px;">
+                    <p>❤️ {int(row.get("Likes",0))}</p>
                 </div>
-                <img src="{row['Image']}" style="width: 100%; border-radius: 15px; object-fit: cover; max-height: 300px;">
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+
+            with del_col:
+                if st.button("🗑", key=f"del{i}"):
+                    data = data.drop(i)
+                    conn.update(worksheet="Sheet1", data=data)
+                    st.rerun()
+
+            if st.button("❤️ Like", key=f"like{i}"):
+                data.loc[i,"Likes"] = int(row.get("Likes",0)) + 1
+                conn.update(worksheet="Sheet1", data=data)
+                st.rerun()
     else:
-        st.info("No meals yet. Go to 'Add New' to start!")
+        st.info("No meals yet.")
 
-# --- TAB 2: LOGGING ---
-with tab_log:
-    with st.container():
-        # We use a container to group inputs visually
-        with st.form(key="log_form", clear_on_submit=True):
-            
-            # 1. Who?
-            name = st.selectbox("Who is eating?", ["JB", "Juvy"]) 
-            
-            # 2. When? (Side by Side)
-            c1, c2 = st.columns(2)
-            with c1:
-                # Standard date picker
-                d_date = st.date_input("Date", datetime.now())
-            with c2:
-                # step=60 allows minute selection. 
-                # On mobile, this triggers the scroll wheel.
-                d_time = st.time_input("Time", datetime.now(), step=60)
-            
-            # 3. Photo
-            uploaded_file = st.file_uploader("Upload", type=['jpg', 'png', 'jpeg'], label_visibility="collapsed")
-            camera_file = st.camera_input("Take Photo", label_visibility="collapsed")
-            
-            final_file = uploaded_file if uploaded_file else camera_file
-            
-            # Spacer
-            st.write("")
-            
-            # 4. Big Beautiful Button
-            submit = st.form_submit_button("✨ Save Meal")
+# ---------------- ADD ----------------
+with tab_add:
+    with st.form("add_form", clear_on_submit=True):
+        name = st.selectbox("Who?", ["JB","Juvy"])
+        c1,c2 = st.columns(2)
+        with c1:
+            d = st.date_input("Date", datetime.now())
+        with c2:
+            t = st.time_input("Time", datetime.now())
+        calories = st.number_input("Calories", min_value=0)
+        upload = st.file_uploader("Upload", type=["jpg","png","jpeg"])
+        cam = st.camera_input("Camera")
+        photo = upload if upload else cam
+        submit = st.form_submit_button("✨ Save Meal")
 
-        if submit and final_file:
-            image_data = image_to_base64(final_file)
-            dt_obj = datetime.combine(d_date, d_time)
-            # Format: Jan 30 • 10:45 PM
-            dt_string = dt_obj.strftime("%b %d • %I:%M %p")
+    if submit and photo:
+        img = image_to_base64(photo)
+        dt = datetime.combine(d,t).strftime("%b %d • %I:%M %p")
+        new = pd.DataFrame([{
+            "Name": name,
+            "Date time": dt,
+            "Calories": calories,
+            "Image": img,
+            "Likes": 0
+        }])
+        data = pd.concat([data,new],ignore_index=True)
+        conn.update(worksheet="Sheet1", data=data)
+        st.success("Saved!")
+        st.rerun()
 
-            new_entry = pd.DataFrame(
-                [{"Name": name, "Date time": dt_string, "Image": image_data}]
-            )
-
-            updated_df = pd.concat([data, new_entry], ignore_index=True)
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.success("Saved!")
-            st.rerun()
+# ---------------- STATS ----------------
+with tab_stats:
+    if not data.empty:
+        data["Calories"] = pd.to_numeric(data["Calories"], errors="coerce")
+        weekly = data.groupby("Name")["Calories"].sum()
+        st.subheader("🔥 Weekly Calories")
+        st.bar_chart(weekly)
+    else:
+        st.info("No data yet.")
