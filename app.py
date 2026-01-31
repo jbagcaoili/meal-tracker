@@ -162,3 +162,82 @@ with tab_feed:
                 # 2. HERO IMAGE (Full Width)
                 img_str = row.get('Image', '')
                 if str(img_str).startswith('data:'):
+                    st.image(img_str, use_container_width=True)
+                
+                # 3. ACTION BAR
+                c_like, c_cal, c_space = st.columns([1, 2, 3])
+                with c_like:
+                    # Like Logic
+                    likes = row.get('Likes')
+                    if likes == '' or likes is None: likes = 0
+                    
+                    if st.button(f"❤️ {likes}", key=f"like_{i}"):
+                        sh.update_cell(i + 2, 5, int(likes) + 1) # Col 5 is 'Likes'
+                        st.rerun()
+                
+                with c_cal:
+                    st.markdown(f"<div style='padding-top: 5px;' class='calories'>🔥 {row.get('Calories')} kcal</div>", unsafe_allow_html=True)
+
+                st.write("") # Bottom spacer
+    else:
+        st.info("No posts yet. Be the first to log a meal!")
+
+# --- TAB 2: LOGGING ---
+with tab_log:
+    st.write("")
+    with st.container(border=True):
+        st.markdown("##### 📸 Snap a Meal")
+        with st.form("entry_form", clear_on_submit=True):
+            
+            # Row 1
+            c1, c2 = st.columns(2)
+            name = c1.selectbox("Who is eating?", ["JB", "Juvy"])
+            cals = c2.number_input("Calories", 0, 2000, 400, step=50)
+            
+            # Row 2
+            c3, c4 = st.columns(2)
+            d_date = c3.date_input("Date")
+            d_time = c4.time_input("Time")
+            
+            # Image Upload
+            photo = st.file_uploader("Upload Image", type=['jpg','png'])
+            cam = st.camera_input("Take Photo")
+            final_file = photo if photo else cam
+            
+            if st.form_submit_button("Post to Feed"):
+                if final_file:
+                    with st.spinner("Posting..."):
+                        try:
+                            img_b64 = image_to_base64(final_file)
+                            
+                            # Safety Check
+                            if len(img_b64) > 50000:
+                                st.error("Image too large. Please take a simpler photo.")
+                                st.stop()
+
+                            ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
+                            
+                            # Append to Sheet
+                            sh.append_row([name, ts, cals, img_b64, 0])
+                            st.success("Posted!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                else:
+                    st.warning("Photo required!")
+
+# --- TAB 3: STATS ---
+with tab_stats:
+    st.write("")
+    if not df.empty:
+        df['Calories'] = pd.to_numeric(df['Calories'], errors='coerce').fillna(0)
+        
+        # Dashboard Cards
+        with st.container(border=True):
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Total Tracked", f"{int(df['Calories'].sum())}")
+            c2.metric("JB's Total", f"{int(df[df['Name']=='JB']['Calories'].sum())}")
+            c3.metric("Juvy's Total", f"{int(df[df['Name']=='Juvy']['Calories'].sum())}")
+        
+        st.caption("Calorie Contribution")
+        st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#FF4B4B")
