@@ -70,7 +70,7 @@ st.markdown(f"""
         border: 1px solid {c['border']};
         border-radius: 8px;
         margin-bottom: 15px;
-        padding: 0px !important; /* REMOVE PADDING FOR FULL BLEED */
+        padding: 0px !important;
         overflow: hidden;
     }}
     
@@ -89,7 +89,7 @@ st.markdown(f"""
     }}
     div.stButton > button:hover {{
         background-color: transparent;
-        color: #ed4956; /* Insta Red hover */
+        color: #ed4956;
         border: none;
     }}
     div.stButton > button:focus {{
@@ -172,7 +172,6 @@ st.markdown(f"""
 # ---------------- BACKEND HELPERS ----------------
 def get_worksheet():
     try:
-        # NOTE: Ensure your .streamlit/secrets.toml is set up correctly
         secrets = st.secrets["connections"]["gsheets"]["service_account_info"]
         scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = Credentials.from_service_account_info(secrets, scopes=scope)
@@ -194,7 +193,6 @@ def load_data():
 
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    # Resize optimization for mobile view & storage
     img.thumbnail((600, 600)) 
     buf = BytesIO()
     img.save(buf, format="JPEG", quality=70) 
@@ -217,7 +215,6 @@ with col_theme:
 if not df.empty:
     st.write("")
     cols = st.columns(4)
-    # Mock stories for visual flair
     users = ["JB", "Juvy", "Gym", "Goals"] 
     avatars = ["405DE6", "E1306C", "5851DB", "56C025"]
     
@@ -239,13 +236,9 @@ tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "➕ New", "📊 Stats"])
 # --- FEED TAB ---
 with tab_feed:
     if not df.empty:
-        # Loop reversed for timeline feel
         for i, row in df.iloc[::-1].iterrows():
-            
-            # THE CARD
             with st.container(border=True):
-                
-                # A. HEADER: Avatar + Name + Options
+                # Header
                 c1, c2, c3 = st.columns([1, 6, 1])
                 with c1:
                     st.markdown(f"""<div style="padding-top:10px; padding-left:10px;">
@@ -257,21 +250,19 @@ with tab_feed:
                         <span style="font-size:12px; color:{c['subtext']}">{row.get('Date time').split('•')[0] if '•' in str(row.get('Date time')) else row.get('Date time')}</span>
                         </div>""", unsafe_allow_html=True)
                 with c3:
-                    # Subtle delete button acting as "options"
                     if st.button("⋮", key=f"opt_{i}"):
                          sh.delete_row(i + 2)
                          st.rerun()
 
-                # B. IMAGE: Edge-to-Edge
-                st.write("") # Micro spacer
+                # Image
+                st.write("") 
                 img_str = row.get('Image', '')
                 if str(img_str).startswith('data:'):
                     st.image(img_str, use_container_width=True)
                 
-                # C. ACTION BAR: Icons
+                # Action Bar
                 ac1, ac2, ac3, ac4 = st.columns([1, 1, 1, 6])
                 with ac1:
-                    # Like Button logic
                     likes = row.get('Likes') or 0
                     btn_label = "❤️" if int(likes) > 0 else "🤍"
                     if st.button(btn_label, key=f"like_{i}"):
@@ -282,7 +273,7 @@ with tab_feed:
                 with ac3:
                     st.markdown(f"<div style='font-size:20px; padding-top:5px; cursor:pointer;'>🚀</div>", unsafe_allow_html=True)
                 
-                # D. CAPTION & LIKES
+                # Caption
                 st.markdown(f"""
                 <div style="padding: 0px 12px 15px 12px;">
                     <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">{likes} likes</div>
@@ -291,27 +282,36 @@ with tab_feed:
                     <div style="color: {c['subtext']}; font-size: 12px; margin-top: 5px; text-transform: uppercase;">{row.get('Date time')}</div>
                 </div>
                 """, unsafe_allow_html=True)
-            
-            st.write("") # Spacer between posts
+            st.write("") 
     else:
         st.info("No posts yet. Be the first!")
 
-# --- UPLOAD TAB ---
+# --- UPLOAD TAB (FIXED) ---
 with tab_log:
     st.write("")
     with st.container(border=True):
         st.markdown(f"<div style='padding:15px; font-weight:600; color:{c['text']}'>New Post</div>", unsafe_allow_html=True)
         
+        # --- INPUTS OUTSIDE FORM (Allows Camera Refresh) ---
+        st.markdown(f"<div style='padding-left:15px; font-size:14px; color:{c['text']}'>Choose Source</div>", unsafe_allow_html=True)
+        input_type = st.radio("Input Source", ["Upload", "Camera"], horizontal=True, label_visibility="collapsed")
+        
+        final_file = None
+        if input_type == "Upload":
+            final_file = st.file_uploader("Choose file", type=['jpg','png'], label_visibility="collapsed")
+        else:
+            final_file = st.camera_input("Take photo", label_visibility="collapsed")
+
+        st.divider()
+
+        # --- DATA FORM ---
         with st.form("entry_form", clear_on_submit=True):
             f1, f2 = st.columns([1, 2])
             with f1:
-                # Avatar preview
                 st.image("https://ui-avatars.com/api/?background=ddd&name=?", width=60)
             with f2:
                 name = st.selectbox("Select User", ["JB", "Juvy"], label_visibility="collapsed")
                 st.caption("Posting as " + name)
-            
-            st.divider()
             
             cals = st.number_input("Calories (kcal)", 0, 2000, 400, step=50)
             
@@ -319,18 +319,6 @@ with tab_log:
             d_date = c3.date_input("Date")
             d_time = c4.time_input("Time")
             
-            st.markdown("---")
-            st.markdown("###### 📸 Photo")
-            
-            # Using Tabs for Input Method (Clean look)
-            input_type = st.radio("Input Source", ["Upload", "Camera"], horizontal=True, label_visibility="collapsed")
-            
-            final_file = None
-            if input_type == "Upload":
-                final_file = st.file_uploader("Choose file", type=['jpg','png'], label_visibility="collapsed")
-            else:
-                final_file = st.camera_input("Take photo", label_visibility="collapsed")
-
             st.write("")
             submit = st.form_submit_button("Share Post", use_container_width=True)
 
@@ -339,12 +327,7 @@ with tab_log:
                     with st.spinner("Posting..."):
                         try:
                             img_b64 = image_to_base64(final_file)
-                            if len(img_b64) > 100000: # Increased limit slightly
-                                st.error("Image too large. Try a smaller file.")
-                                st.stop()
-                            
                             ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
-                            # Structure: Name, Date, Image, Cal, Likes
                             sh.append_row([name, ts, img_b64, cals, 0])
                             st.success("Shared!")
                             st.rerun()
@@ -359,7 +342,6 @@ with tab_stats:
     if not df.empty:
         df['Calories'] = pd.to_numeric(df['Calories'], errors='coerce').fillna(0)
         
-        # Profile Header Style
         col_jb, col_vs, col_juvy = st.columns([2,1,2])
         
         with col_jb:
