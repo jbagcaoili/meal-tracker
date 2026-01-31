@@ -18,152 +18,147 @@ def toggle_theme():
     st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
 
 theme = {
-    "light": {"bg": "#ffffff", "text": "#333333", "card": "#f8f9fa", "btn": "linear-gradient(90deg, #FF4B4B, #FF6B6B)"},
-    "dark": {"bg": "#0e1117", "text": "#ffffff", "card": "#262730", "btn": "linear-gradient(90deg, #FF4B4B, #FF6B6B)"}
+    "light": {
+        "bg": "#fafafa", # Instagram-like light grey background
+        "card": "#ffffff",
+        "text": "#262626",
+        "subtext": "#8e8e8e",
+        "btn_bg": "linear-gradient(135deg, #FF4B4B 0%, #FF6B6B 100%)"
+    },
+    "dark": {
+        "bg": "#000000",
+        "card": "#121212",
+        "text": "#F5F5F5",
+        "subtext": "#A8A8A8",
+        "btn_bg": "linear-gradient(135deg, #FF4B4B 0%, #FF6B6B 100%)"
+    }
 }
 current = theme[st.session_state.theme]
 
-# Inject CSS for the "Production" Look
+# ---------------- INSTAGRAM-STYLE CSS ----------------
 st.markdown(f"""
 <style>
-    .stApp {{ background-color: {current['bg']}; color: {current['text']}; }}
-    div.stButton > button:first-child {{
-        background: {current['btn']}; color: white; border: none; border-radius: 12px; height: 50px; width: 100%; font-weight: 600;
+    /* Global App Styling */
+    .stApp {{
+        background-color: {current['bg']};
+        color: {current['text']};
     }}
+    
+    /* Hide Default Header */
     [data-testid="stHeader"] {{ visibility: hidden; }}
-    /* Fix input text visibility in dark mode */
-    input, select, textarea {{ color: {current['text']}; }}
+    
+    /* POST CARD STYLING */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {{
+        background-color: {current['card']};
+        border: 1px solid {current['bg']}; /* Subtle border */
+        border-radius: 12px;
+        padding: 0px !important; /* Remove padding to make image full width */
+        margin-bottom: 20px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }}
+    
+    /* Primary Action Button (Save) */
+    div.stButton > button:first-child {{
+        background: {current['btn_bg']}; 
+        color: white; 
+        border: none; 
+        border-radius: 8px; 
+        height: 45px; 
+        font-weight: 600;
+    }}
+    
+    /* Icon Buttons (Like/Delete) - Transparent & Clean */
+    button[kind="secondary"] {{
+        background: transparent !important;
+        border: none !important;
+        color: {current['text']} !important;
+        font-size: 1.2rem;
+    }}
+    button[kind="secondary"]:hover {{
+        color: #FF4B4B !important;
+    }}
+
+    /* Typography */
+    .username {{ font-weight: 700; font-size: 15px; color: {current['text']}; }}
+    .timestamp {{ font-size: 12px; color: {current['subtext']}; }}
+    .calories {{ font-weight: 600; font-size: 14px; color: {current['text']}; }}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- ROBUST DATABASE CONNECTION ----------------
-# Uses gspread (Manual Mode) because it is more reliable for your setup
+# ---------------- DATABASE ----------------
 def get_worksheet():
     try:
-        # Load secrets
         secrets = st.secrets["connections"]["gsheets"]["service_account_info"]
-        
-        # Authenticate
         scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = Credentials.from_service_account_info(secrets, scopes=scope)
         client = gspread.authorize(creds)
-        
-        # Open Sheet
         sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         return client.open_by_url(sheet_url).sheet1
     except Exception as e:
         st.error(f"Connection Error: {e}")
         st.stop()
 
-# ---------------- HELPERS ----------------
+sh = get_worksheet()
+
+# Helper: Load Data safely
+def load_data():
+    try:
+        data = sh.get_all_records()
+        return pd.DataFrame(data)
+    except:
+        return pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
+
+# Helper: Process Image
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    
-    # CRITICAL FIX: Google Sheets has a 50k character limit per cell.
-    # We must shrink the image to a thumbnail (200x200) to fit.
-    img.thumbnail((200, 200))  
-    
+    img.thumbnail((400, 400)) # Good balance of quality/size
     buf = BytesIO()
-    # Compress to 50% quality to save space
-    img.save(buf, format="JPEG", quality=50) 
+    img.save(buf, format="JPEG", quality=60) 
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
-# Load Data
-sh = get_worksheet()
-try:
-    data = sh.get_all_records()
-    df = pd.DataFrame(data)
-except:
-    df = pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
+# Load initial data
+df = load_data()
 
 # ---------------- UI LAYOUT ----------------
-# Header
+# Top Bar
 c1, c2 = st.columns([5,1])
-c1.title("🥑 Daily Eats")
-if c2.button("🌗"): toggle_theme(); st.rerun()
+c1.markdown(f"### 🥑 Daily Eats")
+if c2.button("🌗", help="Toggle Theme"):
+    toggle_theme()
+    st.rerun()
 
 # Tabs
-tab_feed, tab_log, tab_stats = st.tabs(["Feed", "Log Meal", "Stats"])
+tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "➕ Log", "📊 Stats"])
 
-# --- TAB 1: FEED ---
+# --- TAB 1: SOCIAL FEED ---
 with tab_feed:
     if not df.empty:
-        # Show newest first
+        # Reverse to show newest first
+        # We use .iterrows() on the original reversed DF so 'i' is the REAL index
         for i, row in df.iloc[::-1].iterrows():
+            
+            # THE POST CARD
             with st.container(border=True):
-                c_head, c_date = st.columns([1, 4])
-                c_head.write("🧑‍🍳" if row.get('Name') == 'JB' else "👩‍🍳")
-                c_date.caption(f"**{row.get('Name')}** • {row.get('Date time')}")
                 
-                # Image Display
+                # 1. HEADER (Avatar + Name)
+                c_av, c_info, c_menu = st.columns([1, 5, 1])
+                with c_av:
+                    # Simple Avatar based on name
+                    av = "https://ui-avatars.com/api/?background=FF4B4B&color=fff&rounded=true&name=" + row.get('Name', 'U')
+                    st.image(av, width=40)
+                with c_info:
+                    st.markdown(f"""
+                    <div style="line-height: 1.2;">
+                        <span class="username">{row.get('Name')}</span><br>
+                        <span class="timestamp">{row.get('Date time')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c_menu:
+                    # Delete Button (Uses real index 'i' + 2 for header correction)
+                    if st.button("🗑️", key=f"del_{i}"):
+                        sh.delete_row(i + 2) # +2 because Google Sheets is 1-indexed + Header
+                        st.rerun()
+
+                # 2. HERO IMAGE (Full Width)
                 img_str = row.get('Image', '')
                 if str(img_str).startswith('data:'):
-                    st.image(img_str, use_container_width=True)
-                
-                # Footer
-                st.markdown(f"**{row.get('Calories')}** kcal")
-    else:
-        st.info("No meals yet. Log your first one!")
-
-# --- TAB 2: LOGGING ---
-with tab_log:
-    st.write("")
-    with st.container(border=True):
-        st.subheader("New Entry")
-        with st.form("entry_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            name = col1.selectbox("Who?", ["JB", "Juvy"])
-            cals = col2.number_input("Calories", 0, 2000, 400, step=50)
-            
-            col3, col4 = st.columns(2)
-            d_date = col3.date_input("Date")
-            d_time = col4.time_input("Time")
-            
-            photo = st.file_uploader("Upload", type=['jpg','png'])
-            cam = st.camera_input("Camera")
-            final_file = photo if photo else cam
-            
-            if st.form_submit_button("Save Meal"):
-                if final_file:
-                    with st.spinner("Saving to Google Sheets..."):
-                        try:
-                            # 1. Convert and Shrink Image
-                            img_b64 = image_to_base64(final_file)
-                            
-                            # 2. Safety Check for Size
-                            if len(img_b64) > 50000:
-                                st.error(f"Image is still too large ({len(img_b64)} chars). Please take a simpler photo.")
-                                st.stop()
-
-                            timestamp = datetime.combine(d_date, d_time).strftime("%Y-%m-%d %H:%M")
-                            
-                            # 3. Direct Write to Sheet
-                            sh.append_row([name, timestamp, cals, img_b64, 0])
-                            
-                            st.success("Saved!")
-                            st.rerun()
-                            
-                        except gspread.exceptions.APIError as e:
-                            st.error(f"Google API Error: {e}")
-                        except Exception as e:
-                            st.error(f"Unexpected Error: {e}")
-                else:
-                    st.warning("Please add a photo!")
-
-# --- TAB 3: STATS ---
-with tab_stats:
-    if not df.empty:
-        # Clean up data types safely
-        df['Calories'] = pd.to_numeric(df['Calories'], errors='coerce').fillna(0)
-        
-        total = df['Calories'].sum()
-        jb = df[df['Name']=='JB']['Calories'].sum()
-        juvy = df[df['Name']=='Juvy']['Calories'].sum()
-        
-        with st.container(border=True):
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Total", int(total))
-            c2.metric("JB", int(jb))
-            c3.metric("Juvy", int(juvy))
-        
-        st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#FF4B4B")
