@@ -31,11 +31,13 @@ st.markdown(f"""
         background: {current['btn']}; color: white; border: none; border-radius: 12px; height: 50px; width: 100%; font-weight: 600;
     }}
     [data-testid="stHeader"] {{ visibility: hidden; }}
+    /* Fix input text visibility in dark mode */
+    input, select, textarea {{ color: {current['text']}; }}
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------- ROBUST DATABASE CONNECTION ----------------
-# This uses the exact method that passed your "Doctor" test
+# Uses gspread (Manual Mode) because it is more reliable for your setup
 def get_worksheet():
     try:
         # Load secrets
@@ -56,9 +58,14 @@ def get_worksheet():
 # ---------------- HELPERS ----------------
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    img.thumbnail((600, 600))
+    
+    # CRITICAL FIX: Google Sheets has a 50k character limit per cell.
+    # We must shrink the image to a thumbnail (200x200) to fit.
+    img.thumbnail((200, 200))  
+    
     buf = BytesIO()
-    img.save(buf, format="JPEG", quality=85)
+    # Compress to 50% quality to save space
+    img.save(buf, format="JPEG", quality=50) 
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 # Load Data
@@ -88,7 +95,7 @@ with tab_feed:
                 c_head.write("🧑‍🍳" if row.get('Name') == 'JB' else "👩‍🍳")
                 c_date.caption(f"**{row.get('Name')}** • {row.get('Date time')}")
                 
-                # Image
+                # Image Display
                 img_str = row.get('Image', '')
                 if str(img_str).startswith('data:'):
                     st.image(img_str, use_container_width=True)
@@ -119,21 +126,34 @@ with tab_log:
             if st.form_submit_button("Save Meal"):
                 if final_file:
                     with st.spinner("Saving to Google Sheets..."):
-                        img_b64 = image_to_base64(final_file)
-                        timestamp = datetime.combine(d_date, d_time).strftime("%Y-%m-%d %H:%M")
-                        
-                        # DIRECT WRITE TO SHEET (The "Manual" Fix)
-                        sh.append_row([name, timestamp, cals, img_b64, 0])
-                        
-                        st.success("Saved!")
-                        st.rerun()
+                        try:
+                            # 1. Convert and Shrink Image
+                            img_b64 = image_to_base64(final_file)
+                            
+                            # 2. Safety Check for Size
+                            if len(img_b64) > 50000:
+                                st.error(f"Image is still too large ({len(img_b64)} chars). Please take a simpler photo.")
+                                st.stop()
+
+                            timestamp = datetime.combine(d_date, d_time).strftime("%Y-%m-%d %H:%M")
+                            
+                            # 3. Direct Write to Sheet
+                            sh.append_row([name, timestamp, cals, img_b64, 0])
+                            
+                            st.success("Saved!")
+                            st.rerun()
+                            
+                        except gspread.exceptions.APIError as e:
+                            st.error(f"Google API Error: {e}")
+                        except Exception as e:
+                            st.error(f"Unexpected Error: {e}")
                 else:
                     st.warning("Please add a photo!")
 
 # --- TAB 3: STATS ---
 with tab_stats:
     if not df.empty:
-        # Convert cals to number carefully
+        # Clean up data types safely
         df['Calories'] = pd.to_numeric(df['Calories'], errors='coerce').fillna(0)
         
         total = df['Calories'].sum()
