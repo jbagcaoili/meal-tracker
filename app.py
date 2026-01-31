@@ -8,20 +8,14 @@ from io import BytesIO
 from PIL import Image
 
 # ---------------- CONFIGURATION ----------------
-st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="centered")
+st.set_page_config(page_title="Daily Eats", page_icon="📸", layout="centered")
 
-# ---------------- STATE MANAGEMENT ----------------
-# We use this to track which page we are on ('home', 'JB', or 'Juvy')
+# ---------------- THEME ENGINE ----------------
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
-if 'current_view' not in st.session_state:
-    st.session_state.current_view = 'home'
 
 def toggle_theme():
     st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
-
-def set_view(view_name):
-    st.session_state.current_view = view_name
 
 themes = {
     "light": {
@@ -56,93 +50,126 @@ st.markdown(f"""
         color: {c['text']};
     }}
     
-    header, footer {{visibility: hidden;}}
+    /* Hide Default Header & Footer */
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
 
-    /* ---------------- BUTTON RESET ---------------- */
-    /* Removes the "Physical" look from ALL buttons by default */
-    div.stButton > button {{
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: {c['text']};
-        padding: 0px 10px;
-    }}
-    div.stButton > button:hover {{
-        color: #ed4956; /* Instagram Red Hover */
-    }}
-    div.stButton > button:focus {{
-        box-shadow: none !important;
-        color: #ed4956;
-    }}
-    
-    /* ---------------- HEADER LOGO BUTTON ---------------- */
-    /* Target the specific container for the Logo Button to apply the font */
-    div[data-testid="column"]:nth-of-type(1) div.stButton > button {{
+    /* Instagram Logo Style */
+    .insta-logo {{
         font-family: 'Grand Hotel', cursive;
-        font-size: 38px;
-        padding: 0px;
-        margin-top: -10px;
+        font-size: 28px;
+        color: {c['text']};
+        margin: 0;
+        padding: 0;
+        text-decoration: none;
     }}
 
-    /* ---------------- SHARE BUTTON (FORM) ---------------- */
-    /* We want the form submit button to look like a REAL button */
-    div[data-testid="stForm"] div.stButton > button {{
-        background: {c['story_ring']} !important;
-        color: white !important;
-        border-radius: 8px !important;
-        padding: 10px !important;
-        font-weight: 600 !important;
-    }}
-
-    /* ---------------- STORIES ---------------- */
-    .story-ring {{
-        width: 74px;
-        height: 74px;
-        border-radius: 50%;
-        padding: 3px;
-        background: {c['story_ring']};
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: auto;
-        cursor: pointer;
-        transition: transform 0.2s;
-    }}
-    .story-ring:hover {{
-        transform: scale(1.05);
-    }}
-    .story-img {{
-        width: 66px;
-        height: 66px;
-        border-radius: 50%;
-        border: 3px solid {c['card']};
-        background-color: #eee;
-        display: block;
-    }}
-    
-    /* Profile Stats */
-    .profile-stat-num {{ font-size: 18px; font-weight: bold; display: block; }}
-    .profile-stat-label {{ font-size: 12px; color: {c['subtext']}; }}
-    
-    /* Post Cards */
+    /* Post Card Container */
     div[data-testid="stVerticalBlockBorderWrapper"] {{
         background-color: {c['card']};
         border: 1px solid {c['border']};
         border-radius: 8px;
         margin-bottom: 15px;
+        padding: 0px !important;
         overflow: hidden;
     }}
     
-    /* Inputs */
+    /* Remove padding inside the card to make image flush */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div > div {{
+        gap: 0px;
+    }}
+
+    /* Buttons (Ghost Style) */
+    div.stButton > button {{
+        background-color: transparent;
+        color: {c['text']};
+        border: none;
+        padding: 0px 10px;
+        font-size: 20px;
+    }}
+    div.stButton > button:hover {{
+        background-color: transparent;
+        color: #ed4956;
+        border: none;
+    }}
+    div.stButton > button:focus {{
+        background-color: transparent;
+        color: #ed4956;
+        border: none;
+        box-shadow: none;
+    }}
+
+    /* Custom Input Styling */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTimeInput input {{
         background-color: {c['input']};
         color: {c['text']};
         border: 1px solid {c['border']};
+        border-radius: 3px;
+    }}
+
+    /* Stories Bar (Circles) */
+    .story-ring {{
+        width: 62px;
+        height: 62px;
+        border-radius: 50%;
+        padding: 2px;
+        background: {c['story_ring']};
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: auto;
+    }}
+    .story-img {{
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 2px solid {c['card']};
+        background-color: #eee;
+        display: block;
+    }}
+    .story-text {{
+        font-size: 11px;
+        text-align: center;
+        margin-top: 4px;
+        color: {c['text']};
+    }}
+
+    /* Tabs Styling (Minimal) */
+    .stTabs [data-baseweb="tab-list"] {{
+        background-color: {c['bg']};
+        border-bottom: 1px solid {c['border']};
+        gap: 20px;
+    }}
+    .stTabs [data-baseweb="tab"] {{
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: transparent;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        color: {c['subtext']};
+    }}
+    .stTabs [aria-selected="true"] {{
+        background-color: transparent;
+        color: {c['text']};
+        font-weight: bold;
+        border-bottom: 2px solid {c['text']};
+    }}
+
+    /* Metric/Stats Styling */
+    div[data-testid="stMetricValue"] {{
+        font-size: 24px;
+        color: {c['text']};
+    }}
+    div[data-testid="stMetricLabel"] {{
+        font-size: 14px;
+        color: {c['subtext']};
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- BACKEND ----------------
+# ---------------- BACKEND HELPERS ----------------
 def get_worksheet():
     try:
         secrets = st.secrets["connections"]["gsheets"]["service_account_info"]
@@ -164,210 +191,183 @@ def load_data():
     except:
         return pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
 
+# --- UPDATED COMPRESSION LOGIC ---
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    if img.mode != 'RGB': img = img.convert('RGB')
+    
+    # 1. Convert to RGB to remove Alpha channel (transparency) which adds 25% size
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+        
+    # 2. Resize drastically to 400x400 max
     img.thumbnail((400, 400)) 
+    
     buf = BytesIO()
+    
+    # 3. Save with low quality (50) to ensure it fits under 50k chars
     img.save(buf, format="JPEG", quality=50) 
+    
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 df = load_data()
-if not df.empty:
-    df['Calories'] = pd.to_numeric(df['Calories'], errors='coerce').fillna(0)
 
 # ---------------- UI LAYOUT ----------------
 
-# 1. HEADER (Clickable Logo + Theme)
-c_logo, c_space, c_theme = st.columns([3, 4, 1])
-with c_logo:
-    # This button now looks like the Logo Text thanks to CSS
-    if st.button("Daily Eats", key="home_btn", help="Go to Feed"):
-        set_view('home')
-        st.rerun()
-
-with c_theme:
-    if st.button("🌗"):
+# 1. APP HEADER
+col_title, col_spacer, col_theme = st.columns([2, 2, 1])
+with col_title:
+    st.markdown('<p class="insta-logo">Daily Eats</p>', unsafe_allow_html=True)
+with col_theme:
+    if st.button("🌗", help="Toggle Theme"):
         toggle_theme()
         st.rerun()
 
-st.write("") 
-
-# 2. STORY NAV BAR (JB and Juvy Only)
-# We render this on EVERY page so you can always switch profiles
-s_col1, s_col2, s_col3, s_col4 = st.columns(4)
-
-def render_story_btn(col, user_name, color_hex):
-    with col:
-        with st.container():
-            # 1. The Avatar Circle (Visual)
-            # We use a button to make the name clickable. Streamlit images aren't clickable natively.
-            # So the visual flow is: Circle Image -> Clickable Name Button below.
+# 2. MOCK STORIES ROW
+if not df.empty:
+    st.write("")
+    cols = st.columns(4)
+    users = ["JB", "Juvy", "Gym", "Goals"] 
+    avatars = ["405DE6", "E1306C", "5851DB", "56C025"]
+    
+    for idx, col in enumerate(cols):
+        with col:
             st.markdown(f"""
-                <div class="story-ring" style="background: linear-gradient(45deg, #{color_hex}, #f09433);">
-                    <img class="story-img" src="https://ui-avatars.com/api/?background={color_hex}&color=fff&name={user_name}&bold=true&size=128">
+                <div style="cursor: pointer;">
+                    <div class="story-ring">
+                        <img class="story-img" src="https://ui-avatars.com/api/?background={avatars[idx]}&color=fff&name={users[idx]}&bold=true">
+                    </div>
+                    <div class="story-text">{users[idx]}</div>
                 </div>
             """, unsafe_allow_html=True)
-            
-            # 2. The Navigation Button (Looks like text)
-            if st.button(user_name, key=f"nav_{user_name}", use_container_width=True):
-                set_view(user_name)
-                st.rerun()
+    st.markdown(f"<div style='border-bottom: 1px solid {c['border']}; margin-top: 10px; margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-render_story_btn(s_col1, "JB", "405DE6")
-render_story_btn(s_col2, "Juvy", "E1306C")
+# 3. NAVIGATION TABS
+tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "➕ New", "📊 Stats"])
 
-st.markdown(f"<div style='border-bottom: 1px solid {c['border']}; margin-top: 5px; margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+# --- FEED TAB ---
+with tab_feed:
+    if not df.empty:
+        for i, row in df.iloc[::-1].iterrows():
+            with st.container(border=True):
+                # Header
+                c1, c2, c3 = st.columns([1, 6, 1])
+                with c1:
+                    st.markdown(f"""<div style="padding-top:10px; padding-left:10px;">
+                        <img src="https://ui-avatars.com/api/?background=random&color=fff&rounded=true&bold=true&name={row.get('Name')}" width="32" style="border-radius:50%;">
+                        </div>""", unsafe_allow_html=True)
+                with c2:
+                    st.markdown(f"""<div style="padding-top:10px; line-height:1.1;">
+                        <span style="font-weight:600; font-size:14px; color:{c['text']}">{row.get('Name')}</span><br>
+                        <span style="font-size:12px; color:{c['subtext']}">{row.get('Date time').split('•')[0] if '•' in str(row.get('Date time')) else row.get('Date time')}</span>
+                        </div>""", unsafe_allow_html=True)
+                with c3:
+                    if st.button("⋮", key=f"opt_{i}"):
+                         sh.delete_row(i + 2)
+                         st.rerun()
 
-# ---------------- MAIN CONTENT ROUTER ----------------
-
-# VIEW A: THE HOME FEED (Default)
-if st.session_state.current_view == 'home':
-    
-    tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "➕ New", "📊 Stats"])
-
-    # --- HOME FEED ---
-    with tab_feed:
-        if not df.empty:
-            for i, row in df.iloc[::-1].iterrows():
-                with st.container(border=True):
-                    # Header
-                    c1, c2, c3 = st.columns([1, 6, 1])
-                    with c1:
-                        st.markdown(f"""<div style="padding-top:10px; padding-left:10px;">
-                            <img src="https://ui-avatars.com/api/?background=random&color=fff&rounded=true&bold=true&name={row.get('Name')}" width="32" style="border-radius:50%;">
-                            </div>""", unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(f"""<div style="padding-top:10px; line-height:1.1;">
-                            <span style="font-weight:600; font-size:14px; color:{c['text']}">{row.get('Name')}</span><br>
-                            <span style="font-size:12px; color:{c['subtext']}">{str(row.get('Date time')).split('•')[0]}</span>
-                            </div>""", unsafe_allow_html=True)
-                    with c3:
-                        if st.button("⋮", key=f"opt_{i}"):
-                             sh.delete_row(i + 2)
-                             st.rerun()
-
-                    # Image
-                    st.write("") 
-                    img_str = row.get('Image', '')
-                    if str(img_str).startswith('data:'):
-                        st.image(img_str, use_container_width=True)
-                    
-                    # Caption
-                    st.markdown(f"""
-                    <div style="padding: 0px 12px 15px 12px;">
-                        <span style="font-weight: 600; font-size: 14px;">{row.get('Name')}</span>
-                        <span style="font-size: 14px;">Ate <b>{row.get('Calories')} kcal</b> 🥑</span>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # Image
                 st.write("") 
-        else:
-            st.info("No posts yet.")
-
-    # --- UPLOAD FORM ---
-    with tab_log:
-        st.write("")
-        with st.container(border=True):
-            st.markdown(f"<div style='padding:15px; font-weight:600; color:{c['text']}'>New Post</div>", unsafe_allow_html=True)
-            
-            st.markdown(f"<div style='padding-left:15px; font-size:14px; color:{c['text']}'>Choose Source</div>", unsafe_allow_html=True)
-            input_type = st.radio("Input Source", ["Upload", "Camera"], horizontal=True, label_visibility="collapsed")
-            
-            final_file = None
-            if input_type == "Upload":
-                final_file = st.file_uploader("Choose file", type=['jpg','png'], label_visibility="collapsed")
-            else:
-                final_file = st.camera_input("Take photo", label_visibility="collapsed")
-
-            st.divider()
-
-            with st.form("entry_form", clear_on_submit=True):
-                f1, f2 = st.columns([1, 2])
-                with f1:
-                    st.image("https://ui-avatars.com/api/?background=ddd&name=?", width=60)
-                with f2:
-                    name = st.selectbox("Select User", ["JB", "Juvy"], label_visibility="collapsed")
-                
-                cals = st.number_input("Calories (kcal)", 0, 2000, 400, step=50)
-                
-                c3, c4 = st.columns(2)
-                d_date = c3.date_input("Date")
-                d_time = c4.time_input("Time")
-                
-                st.write("")
-                if st.form_submit_button("Share Post", use_container_width=True):
-                    if final_file:
-                        try:
-                            img_b64 = image_to_base64(final_file)
-                            ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
-                            # Ensure Correct Column Order: Name, Date, Image, Calories, Likes
-                            sh.append_row([name, ts, img_b64, cals, 0])
-                            st.success("Shared!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                    else:
-                        st.warning("Image required!")
-
-    # --- GLOBAL STATS ---
-    with tab_stats:
-        st.write("")
-        if not df.empty:
-            col_jb, col_juvy = st.columns(2)
-            with col_jb:
-                total_jb = int(df[df['Name']=='JB']['Calories'].sum())
-                st.metric("JB Total", f"{total_jb} kcal")
-            with col_juvy:
-                total_juvy = int(df[df['Name']=='Juvy']['Calories'].sum())
-                st.metric("Juvy Total", f"{total_juvy} kcal")
-            st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#d62976")
-
-# VIEW B & C: INDIVIDUAL PROFILES
-else:
-    # Get the user from the state ('JB' or 'Juvy')
-    profile_user = st.session_state.current_view
-    
-    # Filter Data for this user
-    user_df = df[df['Name'] == profile_user] if not df.empty else pd.DataFrame()
-    
-    # --- PROFILE HEADER ---
-    st.markdown(f"### {profile_user}'s Profile")
-    
-    ph1, ph2, ph3 = st.columns([1, 1, 1])
-    with ph1:
-        # Large Avatar
-        st.image(f"https://ui-avatars.com/api/?background=random&color=fff&name={profile_user}&size=128&rounded=true")
-    with ph2:
-        total_cals = int(user_df['Calories'].sum()) if not user_df.empty else 0
-        st.markdown(f"<span class='profile-stat-num'>{total_cals}</span><span class='profile-stat-label'>Total Cals</span>", unsafe_allow_html=True)
-    with ph3:
-        post_count = len(user_df)
-        st.markdown(f"<span class='profile-stat-num'>{post_count}</span><span class='profile-stat-label'>Posts</span>", unsafe_allow_html=True)
-
-    st.divider()
-
-    # --- PROFILE DASHBOARD ---
-    
-    # 1. User's Personal Chart
-    st.caption("Performance")
-    if not user_df.empty:
-        # Group by Date to show trend
-        user_df['SimpleDate'] = user_df['Date time'].astype(str).apply(lambda x: x.split('•')[0] if '•' in x else x)
-        chart_data = user_df.groupby('SimpleDate')['Calories'].sum()
-        st.line_chart(chart_data)
-    else:
-        st.info("No data available.")
-
-    st.write("")
-    
-    # 2. User's Post Grid
-    st.caption("Posts")
-    if not user_df.empty:
-        grid_cols = st.columns(3)
-        for i, row in user_df.iloc[::-1].reset_index().iterrows():
-            col = grid_cols[i % 3]
-            with col:
                 img_str = row.get('Image', '')
                 if str(img_str).startswith('data:'):
                     st.image(img_str, use_container_width=True)
-                st.caption(f"{row.get('Calories')} kcal")
+                
+                # Action Bar
+                ac1, ac2, ac3, ac4 = st.columns([1, 1, 1, 6])
+                with ac1:
+                    likes = row.get('Likes') or 0
+                    btn_label = "❤️" if int(likes) > 0 else "🤍"
+                    if st.button(btn_label, key=f"like_{i}"):
+                        sh.update_cell(i + 2, 5, int(likes) + 1)
+                        st.rerun()
+                with ac2:
+                    st.markdown(f"<div style='font-size:20px; padding-top:5px; cursor:pointer;'>💬</div>", unsafe_allow_html=True)
+                with ac3:
+                    st.markdown(f"<div style='font-size:20px; padding-top:5px; cursor:pointer;'>🚀</div>", unsafe_allow_html=True)
+                
+                # Caption
+                st.markdown(f"""
+                <div style="padding: 0px 12px 15px 12px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">{likes} likes</div>
+                    <span style="font-weight: 600; font-size: 14px;">{row.get('Name')}</span>
+                    <span style="font-size: 14px;">Ate <b>{row.get('Calories')} kcal</b> today! 🥑</span>
+                    <div style="color: {c['subtext']}; font-size: 12px; margin-top: 5px; text-transform: uppercase;">{row.get('Date time')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            st.write("") 
+    else:
+        st.info("No posts yet. Be the first!")
+
+# --- UPLOAD TAB (SAFE COMPRESSION) ---
+with tab_log:
+    st.write("")
+    with st.container(border=True):
+        st.markdown(f"<div style='padding:15px; font-weight:600; color:{c['text']}'>New Post</div>", unsafe_allow_html=True)
+        
+        # --- INPUTS OUTSIDE FORM ---
+        st.markdown(f"<div style='padding-left:15px; font-size:14px; color:{c['text']}'>Choose Source</div>", unsafe_allow_html=True)
+        input_type = st.radio("Input Source", ["Upload", "Camera"], horizontal=True, label_visibility="collapsed")
+        
+        final_file = None
+        if input_type == "Upload":
+            final_file = st.file_uploader("Choose file", type=['jpg','png'], label_visibility="collapsed")
+        else:
+            final_file = st.camera_input("Take photo", label_visibility="collapsed")
+
+        st.divider()
+
+        # --- DATA FORM ---
+        with st.form("entry_form", clear_on_submit=True):
+            f1, f2 = st.columns([1, 2])
+            with f1:
+                st.image("https://ui-avatars.com/api/?background=ddd&name=?", width=60)
+            with f2:
+                name = st.selectbox("Select User", ["JB", "Juvy"], label_visibility="collapsed")
+                st.caption("Posting as " + name)
+            
+            cals = st.number_input("Calories (kcal)", 0, 2000, 400, step=50)
+            
+            c3, c4 = st.columns(2)
+            d_date = c3.date_input("Date")
+            d_time = c4.time_input("Time")
+            
+            st.write("")
+            submit = st.form_submit_button("Share Post", use_container_width=True)
+
+            if submit:
+                if final_file:
+                    with st.spinner("Posting..."):
+                        try:
+                            # Use new compression function
+                            img_b64 = image_to_base64(final_file)
+                            
+                            # Safety check before sending to Google
+                            if len(img_b64) > 50000:
+                                st.error(f"Image is still too large ({len(img_b64)} chars). Please take a simpler photo.")
+                            else:
+                                ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
+                                sh.append_row([name, ts, img_b64, cals, 0])
+                                st.success("Shared!")
+                                st.rerun()
+                                
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                else:
+                    st.warning("Please add an image!")
+
+# --- STATS TAB ---
+with tab_stats:
+    st.write("")
+    if not df.empty:
+        df['Calories'] = pd.to_numeric(df['Calories'], errors='coerce').fillna(0)
+        
+        col_jb, col_vs, col_juvy = st.columns([2,1,2])
+        
+        with col_jb:
+            st.markdown(f"<div style='text-align:center'><h1 style='color:{c['text']}; margin:0'>{int(df[df['Name']=='JB']['Calories'].sum())}</h1><p style='color:{c['subtext']}'>JB Calories</p></div>", unsafe_allow_html=True)
+            
+        with col_juvy:
+            st.markdown(f"<div style='text-align:center'><h1 style='color:{c['text']}; margin:0'>{int(df[df['Name']=='Juvy']['Calories'].sum())}</h1><p style='color:{c['subtext']}'>Juvy Calories</p></div>", unsafe_allow_html=True)
+
+        st.divider()
+        st.caption("Activity Log")
+        st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#d62976")
