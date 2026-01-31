@@ -11,6 +11,7 @@ from PIL import Image
 st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="centered")
 
 # ---------------- STATE MANAGEMENT ----------------
+# We use this to track which page we are on ('home', 'JB', or 'Juvy')
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 if 'current_view' not in st.session_state:
@@ -19,7 +20,6 @@ if 'current_view' not in st.session_state:
 def toggle_theme():
     st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
 
-# Callback function to handle navigation reliably
 def set_view(view_name):
     st.session_state.current_view = view_name
 
@@ -50,6 +50,7 @@ st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Grand+Hotel&family=Roboto:wght@400;500;700&display=swap');
 
+    /* Global Settings */
     .stApp {{
         background-color: {c['bg']};
         color: {c['text']};
@@ -57,26 +58,34 @@ st.markdown(f"""
     
     header, footer {{visibility: hidden;}}
 
-    /* BUTTON STYLES */
+    /* ---------------- BUTTON RESET ---------------- */
+    /* Removes the "Physical" look from ALL buttons by default */
     div.stButton > button {{
         background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
         color: {c['text']};
-        padding: 0px;
+        padding: 0px 10px;
     }}
     div.stButton > button:hover {{
+        color: #ed4956; /* Instagram Red Hover */
+    }}
+    div.stButton > button:focus {{
+        box-shadow: none !important;
         color: #ed4956;
     }}
     
-    /* Header Logo Button */
-    div[data-testid="column"] div.stButton.logo-btn > button {{
+    /* ---------------- HEADER LOGO BUTTON ---------------- */
+    /* Target the specific container for the Logo Button to apply the font */
+    div[data-testid="column"]:nth-of-type(1) div.stButton > button {{
         font-family: 'Grand Hotel', cursive;
         font-size: 38px;
+        padding: 0px;
         margin-top: -10px;
     }}
 
-    /* Form Submit Button (Make it look real) */
+    /* ---------------- SHARE BUTTON (FORM) ---------------- */
+    /* We want the form submit button to look like a REAL button */
     div[data-testid="stForm"] div.stButton > button {{
         background: {c['story_ring']} !important;
         color: white !important;
@@ -85,10 +94,10 @@ st.markdown(f"""
         font-weight: 600 !important;
     }}
 
-    /* Story Circles */
+    /* ---------------- STORIES ---------------- */
     .story-ring {{
-        width: 80px;
-        height: 80px;
+        width: 74px;
+        height: 74px;
         border-radius: 50%;
         padding: 3px;
         background: {c['story_ring']};
@@ -96,16 +105,24 @@ st.markdown(f"""
         justify-content: center;
         align-items: center;
         margin: auto;
-        margin-bottom: 5px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }}
+    .story-ring:hover {{
+        transform: scale(1.05);
     }}
     .story-img {{
-        width: 72px;
-        height: 72px;
+        width: 66px;
+        height: 66px;
         border-radius: 50%;
         border: 3px solid {c['card']};
         background-color: #eee;
         display: block;
     }}
+    
+    /* Profile Stats */
+    .profile-stat-num {{ font-size: 18px; font-weight: bold; display: block; }}
+    .profile-stat-label {{ font-size: 12px; color: {c['subtext']}; }}
     
     /* Post Cards */
     div[data-testid="stVerticalBlockBorderWrapper"] {{
@@ -116,6 +133,7 @@ st.markdown(f"""
         overflow: hidden;
     }}
     
+    /* Inputs */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTimeInput input {{
         background-color: {c['input']};
         color: {c['text']};
@@ -160,13 +178,13 @@ if not df.empty:
 
 # ---------------- UI LAYOUT ----------------
 
-# 1. HEADER
+# 1. HEADER (Clickable Logo + Theme)
 c_logo, c_space, c_theme = st.columns([3, 4, 1])
 with c_logo:
-    st.markdown('<div class="logo-btn">', unsafe_allow_html=True)
-    # Using callback for Home button too
-    st.button("Daily Eats", key="home_btn", on_click=set_view, args=('home',))
-    st.markdown('</div>', unsafe_allow_html=True)
+    # This button now looks like the Logo Text thanks to CSS
+    if st.button("Daily Eats", key="home_btn", help="Go to Feed"):
+        set_view('home')
+        st.rerun()
 
 with c_theme:
     if st.button("🌗"):
@@ -175,39 +193,45 @@ with c_theme:
 
 st.write("") 
 
-# 2. STORY NAVIGATION (Centered)
-# Using empty columns to center the 2 profiles
-spacer_l, col_jb, col_juvy, spacer_r = st.columns([1, 1, 1, 1])
+# 2. STORY NAV BAR (JB and Juvy Only)
+# We render this on EVERY page so you can always switch profiles
+s_col1, s_col2, s_col3, s_col4 = st.columns(4)
 
 def render_story_btn(col, user_name, color_hex):
     with col:
         with st.container():
-            # The Visual Avatar
+            # 1. The Avatar Circle (Visual)
+            # We use a button to make the name clickable. Streamlit images aren't clickable natively.
+            # So the visual flow is: Circle Image -> Clickable Name Button below.
             st.markdown(f"""
                 <div class="story-ring" style="background: linear-gradient(45deg, #{color_hex}, #f09433);">
                     <img class="story-img" src="https://ui-avatars.com/api/?background={color_hex}&color=fff&name={user_name}&bold=true&size=128">
                 </div>
             """, unsafe_allow_html=True)
             
-            # The Clickable Button (Invisible but active)
-            # We use on_click here for reliable navigation
-            st.button(user_name, key=f"nav_{user_name}", use_container_width=True, on_click=set_view, args=(user_name,))
+            # 2. The Navigation Button (Looks like text)
+            if st.button(user_name, key=f"nav_{user_name}", use_container_width=True):
+                set_view(user_name)
+                st.rerun()
 
-render_story_btn(col_jb, "JB", "405DE6")
-render_story_btn(col_juvy, "Juvy", "E1306C")
+render_story_btn(s_col1, "JB", "405DE6")
+render_story_btn(s_col2, "Juvy", "E1306C")
 
-st.markdown(f"<div style='border-bottom: 1px solid {c['border']}; margin-top: 15px; margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+st.markdown(f"<div style='border-bottom: 1px solid {c['border']}; margin-top: 5px; margin-bottom: 15px;'></div>", unsafe_allow_html=True)
 
 # ---------------- MAIN CONTENT ROUTER ----------------
 
+# VIEW A: THE HOME FEED (Default)
 if st.session_state.current_view == 'home':
-    # --- HOME FEED VIEW ---
+    
     tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "➕ New", "📊 Stats"])
 
+    # --- HOME FEED ---
     with tab_feed:
         if not df.empty:
             for i, row in df.iloc[::-1].iterrows():
                 with st.container(border=True):
+                    # Header
                     c1, c2, c3 = st.columns([1, 6, 1])
                     with c1:
                         st.markdown(f"""<div style="padding-top:10px; padding-left:10px;">
@@ -223,11 +247,13 @@ if st.session_state.current_view == 'home':
                              sh.delete_row(i + 2)
                              st.rerun()
 
+                    # Image
                     st.write("") 
                     img_str = row.get('Image', '')
                     if str(img_str).startswith('data:'):
                         st.image(img_str, use_container_width=True)
                     
+                    # Caption
                     st.markdown(f"""
                     <div style="padding: 0px 12px 15px 12px;">
                         <span style="font-weight: 600; font-size: 14px;">{row.get('Name')}</span>
@@ -238,6 +264,7 @@ if st.session_state.current_view == 'home':
         else:
             st.info("No posts yet.")
 
+    # --- UPLOAD FORM ---
     with tab_log:
         st.write("")
         with st.container(border=True):
@@ -262,6 +289,7 @@ if st.session_state.current_view == 'home':
                     name = st.selectbox("Select User", ["JB", "Juvy"], label_visibility="collapsed")
                 
                 cals = st.number_input("Calories (kcal)", 0, 2000, 400, step=50)
+                
                 c3, c4 = st.columns(2)
                 d_date = c3.date_input("Date")
                 d_time = c4.time_input("Time")
@@ -272,6 +300,7 @@ if st.session_state.current_view == 'home':
                         try:
                             img_b64 = image_to_base64(final_file)
                             ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
+                            # Ensure Correct Column Order: Name, Date, Image, Calories, Likes
                             sh.append_row([name, ts, img_b64, cals, 0])
                             st.success("Shared!")
                             st.rerun()
@@ -280,6 +309,7 @@ if st.session_state.current_view == 'home':
                     else:
                         st.warning("Image required!")
 
+    # --- GLOBAL STATS ---
     with tab_stats:
         st.write("")
         if not df.empty:
@@ -292,17 +322,20 @@ if st.session_state.current_view == 'home':
                 st.metric("Juvy Total", f"{total_juvy} kcal")
             st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#d62976")
 
+# VIEW B & C: INDIVIDUAL PROFILES
 else:
-    # --- INDIVIDUAL PROFILE VIEW ---
+    # Get the user from the state ('JB' or 'Juvy')
     profile_user = st.session_state.current_view
     
-    # Filter Data
+    # Filter Data for this user
     user_df = df[df['Name'] == profile_user] if not df.empty else pd.DataFrame()
     
+    # --- PROFILE HEADER ---
     st.markdown(f"### {profile_user}'s Profile")
     
     ph1, ph2, ph3 = st.columns([1, 1, 1])
     with ph1:
+        # Large Avatar
         st.image(f"https://ui-avatars.com/api/?background=random&color=fff&name={profile_user}&size=128&rounded=true")
     with ph2:
         total_cals = int(user_df['Calories'].sum()) if not user_df.empty else 0
@@ -313,8 +346,12 @@ else:
 
     st.divider()
 
+    # --- PROFILE DASHBOARD ---
+    
+    # 1. User's Personal Chart
     st.caption("Performance")
     if not user_df.empty:
+        # Group by Date to show trend
         user_df['SimpleDate'] = user_df['Date time'].astype(str).apply(lambda x: x.split('•')[0] if '•' in x else x)
         chart_data = user_df.groupby('SimpleDate')['Calories'].sum()
         st.line_chart(chart_data)
@@ -323,6 +360,7 @@ else:
 
     st.write("")
     
+    # 2. User's Post Grid
     st.caption("Posts")
     if not user_df.empty:
         grid_cols = st.columns(3)
