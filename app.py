@@ -57,50 +57,43 @@ st.markdown(f"""
     
     header, footer {{visibility: hidden;}}
 
-    /* "Daily Eats" Logo Button Styling */
-    div.stButton.logo-btn > button {{
-        font-family: 'Grand Hotel', cursive !important;
-        font-size: 38px !important;
-        color: {c['text']} !important;
-        background: transparent !important;
-        border: none !important;
-        padding: 0px !important;
-        margin: 0px !important;
-        box-shadow: none !important;
-        cursor: pointer;
-    }}
-    div.stButton.logo-btn > button:hover {{
-        color: #ed4956 !important;
-    }}
-
-    /* Standard Buttons */
+    /* ---------------- BUTTON RESET ---------------- */
+    /* This removes the "Physical" look from ALL buttons by default */
     div.stButton > button {{
-        background-color: transparent;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         color: {c['text']};
-        border: 1px solid {c['border']};
+        padding: 0px 10px;
+    }}
+    div.stButton > button:hover {{
+        color: #ed4956; /* Instagram Red Hover */
+    }}
+    div.stButton > button:focus {{
+        box-shadow: none !important;
+        color: #ed4956;
     }}
     
-    /* Post Card Container */
-    div[data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: {c['card']};
-        border: 1px solid {c['border']};
-        border-radius: 8px;
-        margin-bottom: 15px;
-        padding: 0px !important;
-        overflow: hidden;
-    }}
-    div[data-testid="stVerticalBlockBorderWrapper"] > div > div {{
-        gap: 0px;
+    /* ---------------- HEADER LOGO ---------------- */
+    /* Target the specific container for the Logo Button */
+    div[data-testid="column"]:nth-of-type(1) div.stButton > button {{
+        font-family: 'Grand Hotel', cursive;
+        font-size: 38px;
+        padding: 0px;
+        margin-top: -10px;
     }}
 
-    /* Inputs */
-    .stTextInput input, .stNumberInput input, .stDateInput input, .stTimeInput input {{
-        background-color: {c['input']};
-        color: {c['text']};
-        border: 1px solid {c['border']};
+    /* ---------------- SHARE BUTTON (FORM) ---------------- */
+    /* We want the form submit button to look like a REAL button */
+    div[data-testid="stForm"] div.stButton > button {{
+        background: {c['story_ring']} !important;
+        color: white !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+        font-weight: 600 !important;
     }}
 
-    /* Stories */
+    /* ---------------- STORIES ---------------- */
     .story-ring {{
         width: 74px;
         height: 74px;
@@ -129,11 +122,19 @@ st.markdown(f"""
     /* Profile Stats */
     .profile-stat-num {{ font-size: 18px; font-weight: bold; display: block; }}
     .profile-stat-label {{ font-size: 12px; color: {c['subtext']}; }}
+    
+    /* Post Cards */
+    div[data-testid="stVerticalBlockBorderWrapper"] {{
+        background-color: {c['card']};
+        border: 1px solid {c['border']};
+        border-radius: 8px;
+        margin-bottom: 15px;
+        overflow: hidden;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------- BACKEND ----------------
-# (Keep your existing connection logic here)
 def get_worksheet():
     try:
         secrets = st.secrets["connections"]["gsheets"]["service_account_info"]
@@ -172,12 +173,10 @@ if not df.empty:
 # 1. HEADER (Clickable Logo + Theme)
 c_logo, c_space, c_theme = st.columns([3, 4, 1])
 with c_logo:
-    # Use a specific class to style this button as text
-    st.markdown('<div class="logo-btn">', unsafe_allow_html=True)
+    # This button now looks like Text thanks to CSS
     if st.button("Daily Eats", key="home_btn", help="Go to Feed"):
         set_view('home')
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with c_theme:
     if st.button("🌗"):
@@ -192,20 +191,18 @@ s_col1, s_col2, s_col3, s_col4 = st.columns(4)
 users = ["JB", "Juvy"]
 avatars = ["405DE6", "E1306C"]
 
-# Helper to render a clickable story "button"
 def render_story_btn(col, user_name, color_hex):
     with col:
-        # We use a container to stack the Image and the Button tightly
         with st.container():
-            # Display Avatar (Visual only)
+            # 1. The Avatar Circle (Visual)
             st.markdown(f"""
                 <div class="story-ring" style="background: linear-gradient(45deg, #{color_hex}, #f09433);">
                     <img class="story-img" src="https://ui-avatars.com/api/?background={color_hex}&color=fff&name={user_name}&bold=true&size=128">
                 </div>
             """, unsafe_allow_html=True)
             
-            # Invisible-ish button below to handle the click
-            # We use the full name as the label so it's clear
+            # 2. The Transparent Navigation Button
+            # We use use_container_width to make it align perfectly under the image
             if st.button(user_name, key=f"nav_{user_name}", use_container_width=True):
                 set_view(user_name)
                 st.rerun()
@@ -213,7 +210,7 @@ def render_story_btn(col, user_name, color_hex):
 render_story_btn(s_col1, "JB", "405DE6")
 render_story_btn(s_col2, "Juvy", "E1306C")
 
-st.markdown(f"<div style='border-bottom: 1px solid {c['border']}; margin-top: 15px; margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+st.markdown(f"<div style='border-bottom: 1px solid {c['border']}; margin-top: 5px; margin-bottom: 15px;'></div>", unsafe_allow_html=True)
 
 # ---------------- MAIN CONTENT ROUTER ----------------
 
@@ -348,7 +345,6 @@ else:
     st.caption("Performance")
     if not user_df.empty:
         # Group by Date to show trend
-        # We need to extract just the date part for grouping
         user_df['SimpleDate'] = user_df['Date time'].astype(str).apply(lambda x: x.split('•')[0] if '•' in x else x)
         chart_data = user_df.groupby('SimpleDate')['Calories'].sum()
         st.line_chart(chart_data)
@@ -360,12 +356,11 @@ else:
     # 2. User's Post Grid
     st.caption("Posts")
     if not user_df.empty:
-        # Display posts in a 3-column grid (Instagram style)
         grid_cols = st.columns(3)
         for i, row in user_df.iloc[::-1].reset_index().iterrows():
             col = grid_cols[i % 3]
             with col:
                 img_str = row.get('Image', '')
                 if str(img_str).startswith('data:'):
-                    st.image(img_str, use_column_width=True)
+                    st.image(img_str, use_container_width=True)
                 st.caption(f"{row.get('Calories')} kcal")
