@@ -8,7 +8,7 @@ from io import BytesIO
 from PIL import Image
 
 # ---------------- CONFIGURATION ----------------
-st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="mobile")
+st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="centered")
 
 # ---------------- THEME & CSS ----------------
 # We force a "Food App" look with soft pinks, rounded corners, and shadows
