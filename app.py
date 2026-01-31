@@ -191,11 +191,22 @@ def load_data():
     except:
         return pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
 
+# --- UPDATED COMPRESSION LOGIC ---
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    img.thumbnail((600, 600)) 
+    
+    # 1. Convert to RGB to remove Alpha channel (transparency) which adds 25% size
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+        
+    # 2. Resize drastically to 400x400 max
+    img.thumbnail((400, 400)) 
+    
     buf = BytesIO()
-    img.save(buf, format="JPEG", quality=70) 
+    
+    # 3. Save with low quality (50) to ensure it fits under 50k chars
+    img.save(buf, format="JPEG", quality=50) 
+    
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 df = load_data()
@@ -286,13 +297,13 @@ with tab_feed:
     else:
         st.info("No posts yet. Be the first!")
 
-# --- UPLOAD TAB (FIXED) ---
+# --- UPLOAD TAB (SAFE COMPRESSION) ---
 with tab_log:
     st.write("")
     with st.container(border=True):
         st.markdown(f"<div style='padding:15px; font-weight:600; color:{c['text']}'>New Post</div>", unsafe_allow_html=True)
         
-        # --- INPUTS OUTSIDE FORM (Allows Camera Refresh) ---
+        # --- INPUTS OUTSIDE FORM ---
         st.markdown(f"<div style='padding-left:15px; font-size:14px; color:{c['text']}'>Choose Source</div>", unsafe_allow_html=True)
         input_type = st.radio("Input Source", ["Upload", "Camera"], horizontal=True, label_visibility="collapsed")
         
@@ -326,11 +337,18 @@ with tab_log:
                 if final_file:
                     with st.spinner("Posting..."):
                         try:
+                            # Use new compression function
                             img_b64 = image_to_base64(final_file)
-                            ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
-                            sh.append_row([name, ts, img_b64, cals, 0])
-                            st.success("Shared!")
-                            st.rerun()
+                            
+                            # Safety check before sending to Google
+                            if len(img_b64) > 50000:
+                                st.error(f"Image is still too large ({len(img_b64)} chars). Please take a simpler photo.")
+                            else:
+                                ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
+                                sh.append_row([name, ts, img_b64, cals, 0])
+                                st.success("Shared!")
+                                st.rerun()
+                                
                         except Exception as e:
                             st.error(f"Error: {e}")
                 else:
