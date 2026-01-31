@@ -1,90 +1,41 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import pandas as pd
-from datetime import datetime
-import base64
-from io import BytesIO
-from PIL import Image
+import google.auth
+from google.oauth2 import service_account
+import requests
 
-# ---------------- CONFIG ----------------
-st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="centered")
+st.title("🔍 Connection Doctor")
 
-# ---------------- CSS ----------------
-st.markdown("""
-<style>
-    .stApp { background-color: white; color: #333; }
-    div.stButton > button:first-child {
-        background: #FF4B4B; color: white; border-radius: 12px; height: 50px; width: 100%;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------- HELPERS ----------------
-def image_to_base64(image_file):
-    img = Image.open(image_file)
-    img.thumbnail((500, 500))
-    buf = BytesIO()
-    img.save(buf, format="JPEG", quality=80)
-    return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
-
-# ---------------- DATABASE CONNECTION (BRUTE FORCE) ----------------
-# We manually pull the secrets to ensure they are found
+# 1. Load Secrets
 try:
-    if "connections" in st.secrets and "gsheets" in st.secrets.connections:
-        # Standard way
-        conn = st.connection("gsheets", type=GSheetsConnection)
-    else:
-        # Fallback: Create connection without arguments and hope for global secrets
-        conn = st.connection("gsheets", type=GSheetsConnection)
-except Exception as e:
-    st.error(f"Connection setup failed: {e}")
+    info = st.secrets["connections"]["gsheets"]["service_account_info"]
+    st.write(f"Testing Key for: `{info['client_email']}`")
+except:
+    st.error("❌ Secrets are missing or formatted wrong.")
     st.stop()
 
-# ---------------- LOAD DATA ----------------
+# 2. Test Google Login (Get a Token)
 try:
-    # Use the specific URL from secrets if available, or just rely on connection
-    df = conn.read(worksheet="Sheet1", ttl=0)
-    df = df.dropna(how="all")
-    # Auto-repair columns
-    for col in ["Name", "Date time", "Image", "Calories", "Likes"]:
-        if col not in df.columns:
-            df[col] = 0 if col in ["Calories", "Likes"] else ""
+    creds = service_account.Credentials.from_service_account_info(
+        info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    )
+    token = google.auth.transport.requests.Request()
+    creds.refresh(token)
+    st.success("✅ Login Successful! We have a valid token.")
 except Exception as e:
-    st.error(f"Database Error: {e}")
-    st.info("Check: 1. Sheet is 'Restricted' (shared with bot). 2. Headers exist: Name, Date time, Image, Calories, Likes")
-    df = pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
+    st.error(f"❌ Login Failed: {e}")
+    st.stop()
 
-# ---------------- UI ----------------
-st.title("🥑 Daily Eats")
+# 3. Test Access to Sheet
+sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+sheet_id = sheet_url.split("/d/")[1].split("/")[0]
 
-tab1, tab2 = st.tabs(["Feed", "Log"])
+url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}"
+headers = {"Authorization": f"Bearer {creds.token}"}
+resp = requests.get(url, headers=headers)
 
-with tab1:
-    if not df.empty:
-        for i, row in df.iloc[::-1].iterrows():
-            with st.container(border=True):
-                st.markdown(f"**{row['Name']}** • {row['Date time']}")
-                st.image(row['Image'])
-                st.caption(f"{row['Calories']} kcal")
-    else:
-        st.info("No meals yet.")
-
-with tab2:
-    with st.form("entry"):
-        name = st.selectbox("Who?", ["JB", "Juvy"])
-        cal = st.number_input("Calories", 300)
-        d = st.date_input("Date")
-        t = st.time_input("Time")
-        photo = st.file_uploader("Photo")
-        
-        if st.form_submit_button("Save"):
-            if photo:
-                img = image_to_base64(photo)
-                ts = datetime.combine(d, t).strftime("%Y/%m/%d %H:%M")
-                new_row = pd.DataFrame([{"Name": name, "Date time": ts, "Image": img, "Calories": cal, "Likes": 0}])
-                updated_df = pd.concat([df, new_row], ignore_index=True)
-                
-                # THE WRITE OPERATION
-                conn.update(worksheet="Sheet1", data=updated_df)
-                st.success("Saved!")
-                st.rerun()
+if resp.status_code == 200:
+    st.success(f"✅ Connected to Sheet: {resp.json().get('properties', {}).get('title')}")
+    st.balloons()
+else:
+    st.error(f"❌ Google Blocked Us (Error {resp.status_code})")
+    st.json(resp.json()) # This prints the EXACT reason
