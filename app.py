@@ -8,84 +8,73 @@ from io import BytesIO
 from PIL import Image
 
 # ---------------- CONFIGURATION ----------------
-st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="centered")
+st.set_page_config(page_title="Daily Eats", page_icon="🥑", layout="mobile")
 
-# ---------------- THEME ENGINE ----------------
-if 'theme' not in st.session_state:
-    st.session_state.theme = 'light'
-
-def toggle_theme():
-    st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
-
-theme = {
-    "light": {
-        "bg": "#fafafa", # Instagram-like light grey background
-        "card": "#ffffff",
-        "text": "#262626",
-        "subtext": "#8e8e8e",
-        "btn_bg": "linear-gradient(135deg, #FF4B4B 0%, #FF6B6B 100%)"
-    },
-    "dark": {
-        "bg": "#000000",
-        "card": "#121212",
-        "text": "#F5F5F5",
-        "subtext": "#A8A8A8",
-        "btn_bg": "linear-gradient(135deg, #FF4B4B 0%, #FF6B6B 100%)"
-    }
-}
-current = theme[st.session_state.theme]
-
-# ---------------- INSTAGRAM-STYLE CSS ----------------
-st.markdown(f"""
+# ---------------- THEME & CSS ----------------
+# We force a "Food App" look with soft pinks, rounded corners, and shadows
+st.markdown("""
 <style>
-    /* Global App Styling */
-    .stApp {{
-        background-color: {current['bg']};
-        color: {current['text']};
-    }}
-    
-    /* Hide Default Header */
-    [data-testid="stHeader"] {{ visibility: hidden; }}
-    
-    /* POST CARD STYLING */
-    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: {current['card']};
-        border: 1px solid {current['bg']}; /* Subtle border */
-        border-radius: 12px;
-        padding: 0px !important; /* Remove padding to make image full width */
-        margin-bottom: 20px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }}
-    
-    /* Primary Action Button (Save) */
-    div.stButton > button:first-child {{
-        background: {current['btn_bg']}; 
-        color: white; 
-        border: none; 
-        border-radius: 8px; 
-        height: 45px; 
-        font-weight: 600;
-    }}
-    
-    /* Icon Buttons (Like/Delete) - Transparent & Clean */
-    button[kind="secondary"] {{
-        background: transparent !important;
-        border: none !important;
-        color: {current['text']} !important;
-        font-size: 1.2rem;
-    }}
-    button[kind="secondary"]:hover {{
-        color: #FF4B4B !important;
-    }}
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
-    /* Typography */
-    .username {{ font-weight: 700; font-size: 15px; color: {current['text']}; }}
-    .timestamp {{ font-size: 12px; color: {current['subtext']}; }}
-    .calories {{ font-weight: 600; font-size: 14px; color: {current['text']}; }}
+    html, body, [class*="css"] {
+        font-family: 'Poppins', sans-serif;
+    }
+
+    /* APP BACKGROUND - Soft Warm White */
+    .stApp {
+        background-color: #FFF8F6; /* Very pale pinkish white */
+    }
+
+    /* HIDE HEADER */
+    [data-testid="stHeader"] { visibility: hidden; }
+
+    /* CARD STYLING */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: white;
+        border-radius: 20px; /* Big rounded corners */
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* Soft floaty shadow */
+        padding: 15px;
+    }
+
+    /* BUTTONS - Pill Shaped & Red/Orange */
+    div.stButton > button:first-child {
+        background: linear-gradient(90deg, #FF4B4B, #FF6B6B);
+        color: white;
+        border: none;
+        border-radius: 50px; /* Pill shape */
+        height: 50px;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
+    }
+
+    /* INPUTS - Rounded */
+    .stTextInput input, .stNumberInput input, .stDateInput input {
+        border-radius: 15px;
+        border: 1px solid #eee;
+        background-color: #fcfcfc;
+    }
+
+    /* TABS - Clean & Minimal */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        background-color: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: white;
+        border-radius: 20px;
+        padding: 5px 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border: none;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #FF4B4B;
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- DATABASE ----------------
+# ---------------- DATABASE CONNECTION ----------------
 def get_worksheet():
     try:
         secrets = st.secrets["connections"]["gsheets"]["service_account_info"]
@@ -100,7 +89,6 @@ def get_worksheet():
 
 sh = get_worksheet()
 
-# Helper: Load Data safely
 def load_data():
     try:
         data = sh.get_all_records()
@@ -108,116 +96,89 @@ def load_data():
     except:
         return pd.DataFrame(columns=["Name", "Date time", "Image", "Calories", "Likes"])
 
-# Helper: Process Image
+# Helper: Shrink Image to Icon Size
 def image_to_base64(image_file):
     img = Image.open(image_file)
-    img.thumbnail((400, 400)) # Good balance of quality/size
+    img.thumbnail((300, 300)) # Perfect size for grid cards
     buf = BytesIO()
-    img.save(buf, format="JPEG", quality=60) 
+    img.save(buf, format="JPEG", quality=70) 
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
-# Load initial data
 df = load_data()
 
 # ---------------- UI LAYOUT ----------------
-# Top Bar
-c1, c2 = st.columns([5,1])
-c1.markdown(f"### 🥑 Daily Eats")
-if c2.button("🌗", help="Toggle Theme"):
-    toggle_theme()
-    st.rerun()
 
-# Tabs
-tab_feed, tab_log, tab_stats = st.tabs(["🏠 Feed", "➕ Log", "📊 Stats"])
+# App Title (Custom HTML for style)
+st.markdown("<h1 style='text-align: center; color: #333; margin-bottom: -10px;'>🥑 Daily Eats</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #888; font-size: 14px;'>Track your meals together</p>", unsafe_allow_html=True)
+st.write("")
 
-# --- TAB 1: SOCIAL FEED ---
+# Navigation Tabs
+tab_feed, tab_log, tab_stats = st.tabs(["🔥 Feed", "➕ Add", "📊 Stats"])
+
+# --- TAB 1: GRID FEED (Like the Reference Image) ---
 with tab_feed:
     if not df.empty:
-        # Reverse to show newest first
-        # We use .iterrows() on the original reversed DF so 'i' is the REAL index
-        for i, row in df.iloc[::-1].iterrows():
+        # Create 2 Columns for the "Grid" look
+        col1, col2 = st.columns(2)
+        
+        # Iterate through rows reversely
+        for index, row in df.iloc[::-1].reset_index().iterrows():
             
-            # THE POST CARD
-            with st.container(border=True):
-                
-                # 1. HEADER (Avatar + Name)
-                c_av, c_info, c_menu = st.columns([1, 5, 1])
-                with c_av:
-                    # Simple Avatar based on name
-                    av = "https://ui-avatars.com/api/?background=FF4B4B&color=fff&rounded=true&name=" + row.get('Name', 'U')
-                    st.image(av, width=40)
-                with c_info:
-                    st.markdown(f"""
-                    <div style="line-height: 1.2;">
-                        <span class="username">{row.get('Name')}</span><br>
-                        <span class="timestamp">{row.get('Date time')}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_menu:
-                    # Delete Button (Uses real index 'i' + 2 for header correction)
-                    if st.button("🗑️", key=f"del_{i}"):
-                        sh.delete_row(i + 2) # +2 because Google Sheets is 1-indexed + Header
-                        st.rerun()
-
-                # 2. HERO IMAGE (Full Width)
-                img_str = row.get('Image', '')
-                if str(img_str).startswith('data:'):
-                    st.image(img_str, use_container_width=True)
-                
-                # 3. ACTION BAR
-                c_like, c_cal, c_space = st.columns([1, 2, 3])
-                with c_like:
-                    # Like Logic
-                    likes = row.get('Likes')
-                    if likes == '' or likes is None: likes = 0
+            # Decide which column to put the card in (Zig-Zag)
+            target_col = col1 if index % 2 == 0 else col2
+            
+            with target_col:
+                with st.container(border=True):
+                    # 1. Image (Top)
+                    img_str = row.get('Image', '')
+                    if str(img_str).startswith('data:'):
+                        st.image(img_str, use_container_width=True)
                     
-                    if st.button(f"❤️ {likes}", key=f"like_{i}"):
-                        sh.update_cell(i + 2, 5, int(likes) + 1) # Col 5 is 'Likes'
+                    # 2. Food Details
+                    st.markdown(f"**{row.get('Name')}**")
+                    st.caption(f"🔥 {row.get('Calories')} kcal")
+                    
+                    # 3. Tiny Action Bar
+                    c_date, c_like = st.columns([2, 1])
+                    c_date.caption(f"{str(row.get('Date time')).split(' ')[0]}") # Just the date
+                    
+                    # Like Button logic (Simplified for grid)
+                    real_idx = row['index'] + 2 # Adjust for header
+                    likes = row.get('Likes') or 0
+                    if c_like.button(f"❤️{likes}", key=f"like_{index}"):
+                        sh.update_cell(real_idx, 5, int(likes) + 1)
                         st.rerun()
-                
-                with c_cal:
-                    st.markdown(f"<div style='padding-top: 5px;' class='calories'>🔥 {row.get('Calories')} kcal</div>", unsafe_allow_html=True)
 
-                st.write("") # Bottom spacer
     else:
-        st.info("No posts yet. Be the first to log a meal!")
+        st.info("No meals yet.")
 
-# --- TAB 2: LOGGING ---
+# --- TAB 2: LOGGING (Clean Card) ---
 with tab_log:
-    st.write("")
     with st.container(border=True):
-        st.markdown("##### 📸 Snap a Meal")
+        st.subheader("Snap a Meal")
         with st.form("entry_form", clear_on_submit=True):
+            name = st.selectbox("Who is eating?", ["JB", "Juvy"])
+            cals = st.number_input("Calories", 0, 2000, 400, step=50)
             
-            # Row 1
             c1, c2 = st.columns(2)
-            name = c1.selectbox("Who is eating?", ["JB", "Juvy"])
-            cals = c2.number_input("Calories", 0, 2000, 400, step=50)
+            d_date = c1.date_input("Date")
+            d_time = c2.time_input("Time")
             
-            # Row 2
-            c3, c4 = st.columns(2)
-            d_date = c3.date_input("Date")
-            d_time = c4.time_input("Time")
-            
-            # Image Upload
-            photo = st.file_uploader("Upload Image", type=['jpg','png'])
-            cam = st.camera_input("Take Photo")
+            photo = st.file_uploader("Upload", type=['jpg','png'])
+            cam = st.camera_input("Camera")
             final_file = photo if photo else cam
             
-            if st.form_submit_button("Post to Feed"):
+            if st.form_submit_button("Post Meal"):
                 if final_file:
-                    with st.spinner("Posting..."):
+                    with st.spinner("Uploading..."):
                         try:
                             img_b64 = image_to_base64(final_file)
-                            
-                            # Safety Check
                             if len(img_b64) > 50000:
-                                st.error("Image too large. Please take a simpler photo.")
+                                st.error("Image too big!")
                                 st.stop()
 
-                            ts = datetime.combine(d_date, d_time).strftime("%b %d • %I:%M %p")
-                            
-                            # Append to Sheet
+                            ts = datetime.combine(d_date, d_time).strftime("%b %d %H:%M")
                             sh.append_row([name, ts, cals, img_b64, 0])
                             st.success("Posted!")
                             st.rerun()
@@ -226,18 +187,20 @@ with tab_log:
                 else:
                     st.warning("Photo required!")
 
-# --- TAB 3: STATS ---
+# --- TAB 3: PROFILE STATS ---
 with tab_stats:
-    st.write("")
     if not df.empty:
         df['Calories'] = pd.to_numeric(df['Calories'], errors='coerce').fillna(0)
         
-        # Dashboard Cards
-        with st.container(border=True):
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Total Tracked", f"{int(df['Calories'].sum())}")
-            c2.metric("JB's Total", f"{int(df[df['Name']=='JB']['Calories'].sum())}")
-            c3.metric("Juvy's Total", f"{int(df[df['Name']=='Juvy']['Calories'].sum())}")
+        # Profile Header Style
+        st.markdown("### 🏆 Weekly Goals")
         
-        st.caption("Calorie Contribution")
-        st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#FF4B4B")
+        with st.container(border=True):
+            # Circular Progress effect using metrics
+            c1, c2 = st.columns(2)
+            c1.metric("JB", f"{int(df[df['Name']=='JB']['Calories'].sum())} kcal")
+            c2.metric("Juvy", f"{int(df[df['Name']=='Juvy']['Calories'].sum())} kcal")
+            
+            st.divider()
+            st.caption("Recent Activity")
+            st.bar_chart(df.groupby("Name")["Calories"].sum(), color="#FF4B4B")
